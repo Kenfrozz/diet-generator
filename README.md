@@ -1,173 +1,66 @@
-# DetoksBot - Diyet Programı Oluşturucu
+<p align="center">
+  <img src="assets/icons/app_icon.png" alt="DetoksBot Logo" width="120" height="120">
+</p>
 
-Diyetisyenler için öğün havuzlarından kişiselleştirilmiş diyet programları oluşturup PDF olarak dışa aktaran masaüstü uygulaması.
+<h1 align="center">DetoksBot</h1>
 
----
+<p align="center">
+  <strong>Profesyonel Diyet Programı Oluşturucu</strong><br>
+  Diyetisyenler için öğün havuzlarından kişiselleştirilmiş diyet programları oluşturan masaüstü uygulaması
+</p>
 
-## 🎯 Özellikler
-
-- **Diyet Programı Oluşturma**: Öğün havuzlarından rastgele tarif seçerek kişiselleştirilmiş diyet programları oluşturma
-- **BKİ Bazlı Tarifler**: Her tarif 4 farklı BKİ grubu için özelleştirilebilir içerik sunar
-- **PDF Dışa Aktarma**: Türkçe karakter destekli profesyonel PDF çıktısı
-- **Diyet Kalıpları**: Özelleştirilebilir öğün zamanlaması ve yapısı
-- **İki Öğün Havuzu**: Normal ve Hastalık olmak üzere ayrı tarif havuzları
-- **Arama ve Filtreleme**: Tablolarda anlık arama özelliği
-- **Veritabanı Yedekleme**: SQLite veritabanını içe/dışa aktarma
-
----
-
-## 📁 Proje Yapısı
-
-```
-detoksbot/
-├── main.py                 # Uygulama giriş noktası
-├── database.py             # SQLite veritabanı yönetimi
-├── pdf_generator.py        # PDF oluşturma modülü
-├── populate_db.py          # Örnek veri ekleme scripti
-├── requirements.txt        # Python bağımlılıkları
-│
-├── ui/                     # Kullanıcı arayüzü modülleri
-│   ├── __init__.py
-│   ├── main_window.py      # Ana pencere ve sidebar
-│   ├── diet_creator.py     # Diyet oluşturma sekmesi
-│   ├── diet_templates.py   # Diyet kalıpları yönetimi
-│   ├── meal_pool.py        # Öğün havuzu yönetimi
-│   └── settings.py         # Ayarlar sekmesi
-│
-├── assets/
-│   └── icons/              # Uygulama ikonları (13 adet)
-│
-└── data/
-    └── detoksbot.db        # SQLite veritabanı
-```
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/PyQt6-6.0+-green?logo=qt&logoColor=white" alt="PyQt6">
+  <img src="https://img.shields.io/badge/Platform-Windows-lightgrey?logo=windows&logoColor=white" alt="Platform">
+  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
+</p>
 
 ---
 
-## 🛠 Teknoloji Stack
+## ✨ Öne Çıkan Özellikler
 
-| Teknoloji     | Amaç                   |
-| ------------- | ---------------------- |
-| **Python 3**  | Ana programlama dili   |
-| **PyQt6**     | Masaüstü GUI framework |
-| **SQLite**    | Veritabanı             |
-| **ReportLab** | PDF oluşturma          |
-
----
-
-## 📋 Veritabanı Şeması
-
-### `recipes` - Tarifler
-
-| Alan        | Tür     | Açıklama                                                       |
-| ----------- | ------- | -------------------------------------------------------------- |
-| id          | INTEGER | Primary Key                                                    |
-| name        | TEXT    | Tarif adı                                                      |
-| meal_type   | TEXT    | Öğün türü (kahvalti, ogle, aksam, ara_ogun_1/2/3, ozel_icecek) |
-| pool_type   | TEXT    | Havuz türü (normal, hastalik)                                  |
-| bki_21_25   | TEXT    | 21-25 BKİ grubu tarif metni                                    |
-| bki_26_29   | TEXT    | 26-29 BKİ grubu tarif metni                                    |
-| bki_30_33   | TEXT    | 30-33 BKİ grubu tarif metni                                    |
-| bki_34_plus | TEXT    | 34+ BKİ grubu tarif metni                                      |
-
-### `diet_templates` - Diyet Kalıpları
-
-| Alan | Tür     | Açıklama    |
-| ---- | ------- | ----------- |
-| id   | INTEGER | Primary Key |
-| name | TEXT    | Kalıp adı   |
-
-### `template_meals` - Kalıp Öğünleri
-
-| Alan        | Tür     | Açıklama            |
-| ----------- | ------- | ------------------- |
-| id          | INTEGER | Primary Key         |
-| template_id | INTEGER | FK → diet_templates |
-| time        | TEXT    | Öğün saati (HH:mm)  |
-| meal_name   | TEXT    | Öğün görünen adı    |
-| meal_type   | TEXT    | Öğün türü           |
-| sort_order  | INTEGER | Sıralama            |
-
-### `settings` - Ayarlar
-
-| Alan  | Tür  | Açıklama      |
-| ----- | ---- | ------------- |
-| key   | TEXT | Ayar anahtarı |
-| value | TEXT | Ayar değeri   |
+| Özellik                        | Açıklama                                             |
+| ------------------------------ | ---------------------------------------------------- |
+| 🍽️ **Akıllı Tarif Havuzu**     | Normal ve Hastalık olmak üzere iki ayrı tarif havuzu |
+| 📊 **BKİ Bazlı Özelleştirme**  | Her tarif 4 farklı BKİ grubu için ayrı içerik sunar  |
+| 📄 **PDF & DOCX Çıktı**        | Profesyonel görünümlü doküman oluşturma              |
+| 🎨 **Özelleştirilebilir Stil** | Font, boyut ve altbilgi ayarları                     |
+| 👤 **Kullanıcı Yönetimi**      | Giriş sistemi ve oturum yönetimi                     |
+| 📦 **Veritabanı Yedekleme**    | SQLite veritabanını içe/dışa aktarma                 |
+| 🌗 **Mevsimlik Mod**           | Yaz/Kış için ayrı tarif veritabanları                |
 
 ---
 
-## 🥗 Öğün Türleri
+## 🖥️ Ekran Görüntüleri
 
-| Key           | Görünen Ad   |
-| ------------- | ------------ |
-| `kahvalti`    | Kahvaltı     |
-| `ara_ogun_1`  | Ara Öğün 1   |
-| `ogle`        | Öğle Yemeği  |
-| `ara_ogun_2`  | Ara Öğün 2   |
-| `aksam`       | Akşam Yemeği |
-| `ara_ogun_3`  | Ara Öğün 3   |
-| `ozel_icecek` | Özel İçecek  |
+### Ana Ekran
 
----
+Modern koyu tema ile tasarlanmış kullanıcı dostu arayüz.
 
-## 🏥 BKİ Grupları
+### Diyet Oluşturma
 
-| Grup      | Aralık          |
-| --------- | --------------- |
-| 21-25 BKİ | Normal kilolu   |
-| 26-29 BKİ | Fazla kilolu    |
-| 30-33 BKİ | Obez (Sınıf 1)  |
-| 34+ BKİ   | Obez (Sınıf 2+) |
+- Kişisel bilgiler (Ad, yaş, boy, kilo)
+- Program ayarları (Başlangıç tarihi, gün sayısı)
+- BKİ otomatik hesaplama
+- Hariç tutulacak yiyecekler
 
 ---
 
-## 🖥 Uygulama Sekmeleri
-
-### 1. Diyet Oluştur
-
-- Havuz türü seçimi (Normal/Hastalık)
-- Diyet kalıbı seçimi
-- BKİ grubu seçimi
-- Hariç tutulacak malzemeler
-- PDF dosya adı belirleme
-- Diyet programı oluştur ve PDF kaydet
-
-### 2. Diyet Kalıpları
-
-- Kalıp listesi (arama özellikli)
-- Yeni kalıp ekleme
-- Kalıp düzenleme/silme
-- Öğün zamanı, adı ve türü belirleme
-
-### 3. Normal Öğün Havuzu
-
-- Normal tarifler listesi (arama özellikli)
-- Öğün türüne göre filtreleme
-- Tarif ekleme/düzenleme/silme
-- 4 BKİ grubu için farklı içerikler
-
-### 4. Hastalık Öğün Havuzu
-
-- Hastalık tarifleri listesi
-- Normal havuz ile aynı özellikler
-
-### 5. Ayarlar
-
-- Diyet programı gün sayısı (1-30)
-- PDF kayıt yolu
-- Veritabanı dışa/içe aktarma
-
----
-
-## 🚀 Kurulum ve Çalıştırma
+## 🚀 Kurulum
 
 ### Gereksinimler
 
+- Python 3.10 veya üzeri
+- Windows 10/11
+
+### Bağımlılıkları Yükle
+
 ```bash
-pip install PyQt6 reportlab
+pip install -r requirements.txt
 ```
 
-### Çalıştırma
+### Uygulamayı Başlat
 
 ```bash
 python main.py
@@ -175,197 +68,142 @@ python main.py
 
 ---
 
-## 📄 PDF Çıktısı
-
-Oluşturulan PDF şunları içerir:
-
-- Başlık: "Kişisel Diyet Programı"
-- Alt başlık: Kalıp adı, Havuz türü, BKİ grubu
-- Her gün için ayrı bölüm
-- Öğün saati, öğün adı ve tarif detayları
-
----
-
-## 🔧 Modül Detayları
-
-### `main.py`
-
-Uygulamanın giriş noktası. Veritabanını başlatır ve PyQt6 uygulamasını çalıştırır.
-
-### `database.py`
-
-SQLite veritabanı işlemlerini yönetir:
-
-- Tarif CRUD işlemleri
-- Kalıp CRUD işlemleri
-- Ayar yönetimi
-- Varsayılan kalıplar oluşturma
-
-### `pdf_generator.py`
-
-ReportLab ile PDF oluşturma:
-
-- Türkçe karakter desteği (Arial/Calibri/Segoe UI)
-- Profesyonel stil şablonları
-- Günlük öğün tabloları
-
-### `ui/main_window.py`
-
-Ana pencere yönetimi:
-
-- Daraltılabilir sidebar
-- Sekme navigasyonu
-- 5 ana sekme
-
-### `ui/diet_creator.py`
-
-Diyet oluşturma arayüzü:
-
-- Seçim formları
-- Rastgele tarif atama
-- PDF oluşturma
-
-### `ui/diet_templates.py`
-
-Kalıp yönetimi:
-
-- Kalıp listesi (arama özellikli)
-- Öğün ekleme/düzenleme dialogu
-
-### `ui/meal_pool.py`
-
-Tarif yönetimi:
-
-- Tarif listesi (arama ve filtre)
-- Tarif ekleme/düzenleme dialogu
-- Normal ve Hastalık havuzları için ortak widget
-
-### `ui/settings.py`
-
-Ayarlar yönetimi:
-
-- Genel uygulama ayarları
-- Veritabanı yedekleme
-
----
-
-## 👤 Kullanıcı Akışı Örneği
-
-### Senaryo: Yeni Bir Danışan İçin Diyet Programı Hazırlama
-
-#### Adım 1: Tarif Ekleme (İlk Kullanım)
+## 📁 Proje Yapısı
 
 ```
-1. Uygulamayı başlat: python main.py
-2. Soldaki menüden "Normal Öğün Havuzu" sekmesine tıkla
-3. "Yeni Tarif Ekle" butonuna tıkla
-4. Dialog açılır:
-   - Tarif Adı: "Zeytinyağlı Enginar"
-   - Öğün Türü: "Öğle Yemeği" seç
-   - Havuz: Normal (otomatik)
-   - 21-25 BKİ: "2 adet enginar, 1 yemek kaşığı zeytinyağı..."
-   - 26-29 BKİ: "1.5 adet enginar, 1 tatlı kaşığı zeytinyağı..."
-   - 30-33 BKİ: "1 adet enginar, az yağ..."
-   - 34+ BKİ: "1 adet enginar, yağsız..."
-5. "Kaydet" butonuna bas
-6. Tarif listede görünür ✓
-```
-
-#### Adım 2: Diyet Kalıbı Oluşturma
-
-```
-1. "Diyet Kalıpları" sekmesine geç
-2. "Yeni Kalıp Ekle" butonuna tıkla
-3. Kalıp Adı: "5 Öğünlü Standart"
-4. Öğünleri ekle:
-   - 08:00 | Kahvaltı | Kahvaltı
-   - 10:30 | Kuşluk | Ara Öğün 1
-   - 12:30 | Öğle | Öğle Yemeği
-   - 15:30 | İkindi | Ara Öğün 2
-   - 19:00 | Akşam | Akşam Yemeği
-5. "Kaydet" butonuna bas
-```
-
-#### Adım 3: Diyet Programı Oluşturma
-
-```
-1. "Diyet Oluştur" sekmesine geç
-2. Ayarları yap:
-   - Havuz Türü: "Normal"
-   - Diyet Kalıbı: "5 Öğünlü Standart"
-   - BKİ Grubu: "26-29 BKİ" (danışanın BKİ'sine göre)
-   - Hariç Tut: "ceviz, fındık" (alerjisi varsa)
-   - Dosya Adı: "ayse_hanim_diyet"
-3. "Diyet Programı Oluştur" butonuna bas
-4. PDF kaydetme dialogu açılır
-5. Konum seç ve "Kaydet" de
-6. PDF oluşturuldu mesajı görünür ✓
-```
-
-#### Adım 4: PDF Çıktısı
-
-```
-Oluşturulan PDF içeriği:
-
-┌─────────────────────────────────────────┐
-│     KİŞİSEL DİYET PROGRAMI              │
-│  Kalıp: 5 Öğünlü | Havuz: Normal        │
-│            26-29 BKİ                    │
-├─────────────────────────────────────────┤
-│ 📅 1. Gün                               │
-├─────────────────────────────────────────┤
-│ 08:00 | Kahvaltı | 2 dilim tam buğday...│
-│ 10:30 | Kuşluk   | 1 avuç badem...      │
-│ 12:30 | Öğle     | Zeytinyağlı enginar..│
-│ 15:30 | İkindi   | 1 kase yoğurt...     │
-│ 19:00 | Akşam    | Izgara tavuk göğsü...│
-├─────────────────────────────────────────┤
-│ 📅 2. Gün                               │
-│ ...                                     │
-└─────────────────────────────────────────┘
+detoksbot/
+├── main.py                  # Uygulama giriş noktası
+├── database.py              # SQLite veritabanı yönetimi
+├── document_generator.py    # DOCX & PDF oluşturma
+├── pdf_generator.py         # ReportLab PDF desteği
+├── requirements.txt         # Python bağımlılıkları
+│
+├── ui/                      # Kullanıcı arayüzü modülleri
+│   ├── main_window.py       # Ana pencere ve sidebar
+│   ├── login_dialog.py      # Giriş ekranı
+│   ├── diet_creator.py      # Diyet oluşturma
+│   ├── diet_templates.py    # Diyet kalıpları
+│   ├── meal_pool.py         # Tarif havuzu
+│   ├── settings.py          # Ayarlar
+│   ├── styles.py            # Tema ve renkler
+│   └── icon_utils.py        # İkon yönetimi
+│
+├── assets/icons/            # Uygulama ikonları
+└── data/                    # Veritabanı dosyaları
 ```
 
 ---
 
-### Diğer Yaygın İşlemler
+## 🛠️ Teknoloji Stack
 
-#### Tarif Arama
-
-```
-Öğün Havuzu sekmesinde:
-1. "Ara:" kutusuna "yoğurt" yaz
-2. Liste anında filtrelenir
-3. Sadece adında "yoğurt" geçen tarifler görünür
-```
-
-#### Tarif Düzenleme
-
-```
-1. Tabloda tarifi bul
-2. Sağdaki kalem ikonuna (📝) tıkla
-3. Dialog açılır, değişiklikleri yap
-4. "Kaydet" butonuna bas
-```
-
-#### Veritabanı Yedekleme
-
-```
-Ayarlar sekmesinde:
-1. "Veritabanını Dışa Aktar" butonuna tıkla
-2. Kayıt konumu seç
-3. .db dosyası kaydedilir
-
-Geri yükleme:
-1. "Veritabanını İçe Aktar" butonuna tıkla
-2. Yedek .db dosyasını seç
-3. Uygulamayı yeniden başlat
-```
+| Teknoloji       | Versiyon | Amaç                 |
+| --------------- | -------- | -------------------- |
+| **Python**      | 3.10+    | Ana programlama dili |
+| **PyQt6**       | 6.0+     | Modern masaüstü GUI  |
+| **SQLite**      | 3.x      | Yerel veritabanı     |
+| **python-docx** | 0.8+     | DOCX oluşturma       |
+| **docx2pdf**    | 0.1+     | PDF dönüştürme       |
+| **bcrypt**      | 4.0+     | Şifre güvenliği      |
 
 ---
 
-## 📌 Notlar
+## 📋 Veritabanı Şeması
 
-- Uygulama Windows için optimize edilmiştir
-- Türkçe karakter desteği için Windows fontları kullanılır
-- Veritabanı ilk çalıştırmada otomatik oluşturulur
-- Varsayılan olarak 2 diyet kalıbı (2 Öğünlü, 3 Öğünlü) eklenir
+### Tablolar
+
+| Tablo            | Açıklama               |
+| ---------------- | ---------------------- |
+| `users`          | Kullanıcı hesapları    |
+| `recipes`        | Tarifler (4 BKİ grubu) |
+| `diet_templates` | Diyet kalıpları        |
+| `template_meals` | Kalıp öğünleri         |
+| `settings`       | Uygulama ayarları      |
+
+### BKİ Grupları
+
+| Grup      | Aralık | Kategori        |
+| --------- | ------ | --------------- |
+| 21-25 BKİ | < 25   | Normal          |
+| 26-29 BKİ | 25-30  | Fazla Kilolu    |
+| 30-33 BKİ | 30-35  | Obez (Sınıf 1)  |
+| 34+ BKİ   | > 35   | Obez (Sınıf 2+) |
+
+---
+
+## 🎯 Kullanım Kılavuzu
+
+### 1. İlk Kurulum
+
+1. Uygulamayı başlatın
+2. Yeni hesap oluşturun
+3. "Oturumu açık tut" ile kalıcı giriş yapın
+
+### 2. Tarif Ekleme
+
+1. **Tarif Havuzu** sekmesine gidin
+2. **Yeni Tarif Ekle** butonuna tıklayın
+3. Her BKİ grubu için ayrı tarif içeriği girin
+4. Kaydedin
+
+### 3. Diyet Kalıbı Oluşturma
+
+1. **Diyet Kalıpları** sekmesine gidin
+2. **Yeni Kalıp Ekle** butonuna tıklayın
+3. Öğün saatlerini ve türlerini belirleyin
+4. Kaydedin
+
+### 4. Program Oluşturma
+
+1. **Diyet Oluştur** sekmesine gidin
+2. Danışan bilgilerini girin (ad, boy, kilo)
+3. Kalıp ve BKİ grubunu seçin
+4. **Diyet Programı Oluştur** butonuna tıklayın
+5. PDF ve DOCX dosyaları oluşturulur
+
+---
+
+## ⚙️ Ayarlar
+
+### Doküman Ayarları
+
+| Ayar              | Varsayılan    | Açıklama                |
+| ----------------- | ------------- | ----------------------- |
+| Font              | Comic Sans MS | Doküman yazı tipi       |
+| Başlık Boyutu     | 18 pt         | Gün başlıkları          |
+| Alt Başlık Boyutu | 14 pt         | Öğün başlıkları         |
+| İçerik Boyutu     | 11 pt         | Tarif metinleri         |
+| Kayıt Yolu        | Masaüstü      | Varsayılan kayıt konumu |
+
+### Altbilgi (Footer)
+
+- Telefon numarası
+- Website adresi
+- Instagram kullanıcı adı
+
+---
+
+## 🔒 Güvenlik
+
+- Şifreler **bcrypt** ile hashlenir
+- Kullanıcı oturumları güvenli saklanır
+- Veritabanı yerel olarak korunur
+
+---
+
+## 📝 Lisans
+
+Bu proje MIT lisansı altında lisanslanmıştır.
+
+---
+
+## 👨‍💻 Geliştirici
+
+**Kenan Kanat**  
+📧 kenankanat93@gmail.com  
+🔗 [GitHub](https://github.com/Kenfrozz)
+
+---
+
+<p align="center">
+  <sub>DetoksBot ile daha sağlıklı yaşam 🥗</sub>
+</p>
