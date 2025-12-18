@@ -60,14 +60,28 @@ def main():
     # Global Finrise stylesheet - merkezi COLORS sistemini kullanır
     app.setStyleSheet(get_global_stylesheet())
     
-    # Giriş dialogunu göster
-    login_dialog = LoginDialog(db)
-    if login_dialog.exec() != LoginDialog.DialogCode.Accepted:
-        # Giriş iptal edildi, uygulamadan çık
-        sys.exit(0)
+    # Kayıtlı oturum kontrolü
+    remembered_user_id = db.get_setting("remembered_user_id", "")
+    current_user = None
     
-    # Giriş başarılı - kullanıcı bilgilerini al
-    current_user = login_dialog.get_user()
+    if remembered_user_id:
+        # Kayıtlı kullanıcı var, otomatik giriş yap
+        try:
+            user = db.get_user(int(remembered_user_id))
+            if user:
+                current_user = user
+        except:
+            pass
+    
+    if not current_user:
+        # Kayıtlı oturum yok veya geçersiz, login dialogunu göster
+        login_dialog = LoginDialog(db)
+        if login_dialog.exec() != LoginDialog.DialogCode.Accepted:
+            # Giriş iptal edildi, uygulamadan çık
+            sys.exit(0)
+        
+        # Giriş başarılı - kullanıcı bilgilerini al
+        current_user = login_dialog.get_user()
     
     # Ana pencereyi oluştur ve göster
     window = MainWindow(db)

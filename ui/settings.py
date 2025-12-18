@@ -6,7 +6,7 @@ import shutil
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSpinBox,
     QLineEdit, QPushButton, QGroupBox, QFormLayout,
-    QMessageBox, QFileDialog, QTabWidget
+    QMessageBox, QFileDialog, QTabWidget, QComboBox
 )
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QFont, QIcon
@@ -57,8 +57,8 @@ class SettingsWidget(QWidget):
         # Sekme 1: Genel Ayarlar
         self.tabs.addTab(self._create_general_tab(), "Genel")
         
-        # Sekme 2: PDF Ayarları
-        self.tabs.addTab(self._create_pdf_tab(), "PDF Ayarları")
+        # Sekme 2: Doküman Ayarları
+        self.tabs.addTab(self._create_pdf_tab(), "Doküman Ayarları")
         
         # Sekme 3: Veritabanı
         self.tabs.addTab(self._create_database_tab(), "Veritabanı")
@@ -81,26 +81,6 @@ class SettingsWidget(QWidget):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setSpacing(20)
-        
-        # Kayıt yolu
-        save_path_layout = QHBoxLayout()
-        self.save_path_input = QLineEdit()
-        self.save_path_input.setReadOnly(True)
-        save_path_layout.addWidget(self.save_path_input)
-        
-        browse_btn = QPushButton("Gözat...")
-        browse_btn.setStyleSheet(get_cancel_button_style())
-        browse_btn.clicked.connect(self.browse_save_path)
-        save_path_layout.addWidget(browse_btn)
-        
-        path_layout = QFormLayout()
-        path_layout.setSpacing(15)
-        path_layout.addRow("Kayıt Yolu:", save_path_layout)
-        
-        path_group = QGroupBox("Dosya Konumu")
-        path_group.setStyleSheet(get_groupbox_style())
-        path_group.setLayout(path_layout)
-        layout.addWidget(path_group)
         
         # Mevsim seçimi grubu
         season_group = QGroupBox("Mevsim Seçimi")
@@ -148,13 +128,84 @@ class SettingsWidget(QWidget):
         return tab
     
     def _create_pdf_tab(self):
-        """PDF ayarları sekmesini oluştur."""
+        """Doküman ayarları sekmesini oluştur."""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setSpacing(20)
         
+        # Kayıt yolu grubu
+        save_path_layout = QHBoxLayout()
+        self.save_path_input = QLineEdit()
+        self.save_path_input.setReadOnly(True)
+        save_path_layout.addWidget(self.save_path_input)
+        
+        browse_btn = QPushButton("Gözat...")
+        browse_btn.setStyleSheet(get_cancel_button_style())
+        browse_btn.clicked.connect(self.browse_save_path)
+        save_path_layout.addWidget(browse_btn)
+        
+        path_layout = QFormLayout()
+        path_layout.setSpacing(15)
+        path_layout.addRow("Kayıt Yolu:", save_path_layout)
+        
+        path_group = QGroupBox("Dosya Konumu")
+        path_group.setStyleSheet(get_groupbox_style())
+        path_group.setLayout(path_layout)
+        layout.addWidget(path_group)
+        
+        # Yazı tipi ayarları grubu
+        font_group = QGroupBox("Yazı Tipi Ayarları")
+        font_group.setStyleSheet(get_groupbox_style())
+        font_layout = QFormLayout(font_group)
+        font_layout.setSpacing(15)
+        
+        # Font seçimi
+        self.pdf_font_combo = QComboBox()
+        self.pdf_font_combo.addItems([
+            "Comic Sans MS",
+            "Arial",
+            "Calibri",
+            "Segoe UI",
+            "Times New Roman",
+            "Verdana",
+            "Tahoma",
+            "Trebuchet MS"
+        ])
+        font_layout.addRow("Font:", self.pdf_font_combo)
+        
+        # Başlık yazı boyutu
+        self.pdf_title_size = QSpinBox()
+        self.pdf_title_size.setRange(12, 36)
+        self.pdf_title_size.setValue(18)
+        self.pdf_title_size.setSuffix(" pt")
+        font_layout.addRow("Başlık Boyutu:", self.pdf_title_size)
+        
+        # Alt başlık yazı boyutu
+        self.pdf_subtitle_size = QSpinBox()
+        self.pdf_subtitle_size.setRange(10, 24)
+        self.pdf_subtitle_size.setValue(14)
+        self.pdf_subtitle_size.setSuffix(" pt")
+        font_layout.addRow("Alt Başlık Boyutu:", self.pdf_subtitle_size)
+        
+        # İçerik yazı boyutu
+        self.pdf_content_size = QSpinBox()
+        self.pdf_content_size.setRange(8, 18)
+        self.pdf_content_size.setValue(11)
+        self.pdf_content_size.setSuffix(" pt")
+        font_layout.addRow("İçerik Boyutu:", self.pdf_content_size)
+        
+        # Öğün saati yazı boyutu
+        self.pdf_time_size = QSpinBox()
+        self.pdf_time_size.setRange(8, 16)
+        self.pdf_time_size.setValue(10)
+        self.pdf_time_size.setSuffix(" pt")
+        font_layout.addRow("Öğün Saati Boyutu:", self.pdf_time_size)
+        
+        layout.addWidget(font_group)
+        
         # İletişim bilgileri grubu
         contact_group = QGroupBox("Altbilgi (İletişim Bilgileri)")
+        contact_group.setStyleSheet(get_groupbox_style())
         contact_layout = QFormLayout(contact_group)
         contact_layout.setSpacing(15)
         
@@ -188,7 +239,7 @@ class SettingsWidget(QWidget):
         btn_layout = QHBoxLayout()
         
         export_btn = QPushButton(" Veritabanını Dışa Aktar")
-        export_btn.setIcon(get_colored_icon("save.svg", COLORS["text_accent"]))
+        export_btn.setIcon(get_colored_icon("export.svg", COLORS["text_accent"]))
         export_btn.setStyleSheet(get_cancel_button_style())
         export_btn.clicked.connect(self.export_database)
         btn_layout.addWidget(export_btn)
@@ -210,10 +261,19 @@ class SettingsWidget(QWidget):
         """Ayarları yükle."""
         settings = self.db.get_all_settings()
         
-        pass
-        
         save_path = settings.get("save_path", "")
         self.save_path_input.setText(save_path)
+        
+        # PDF yazı tipi ayarları
+        pdf_font = settings.get("pdf_font", "Comic Sans MS")
+        font_index = self.pdf_font_combo.findText(pdf_font)
+        if font_index >= 0:
+            self.pdf_font_combo.setCurrentIndex(font_index)
+        
+        self.pdf_title_size.setValue(int(settings.get("pdf_title_size", "18")))
+        self.pdf_subtitle_size.setValue(int(settings.get("pdf_subtitle_size", "14")))
+        self.pdf_content_size.setValue(int(settings.get("pdf_content_size", "11")))
+        self.pdf_time_size.setValue(int(settings.get("pdf_time_size", "10")))
         
         # İletişim bilgileri
         self.phone_input.setText(settings.get("footer_phone", ""))
@@ -234,6 +294,13 @@ class SettingsWidget(QWidget):
     def save_settings(self):
         """Ayarları kaydet."""
         self.db.set_setting("save_path", self.save_path_input.text())
+        
+        # PDF yazı tipi ayarları
+        self.db.set_setting("pdf_font", self.pdf_font_combo.currentText())
+        self.db.set_setting("pdf_title_size", str(self.pdf_title_size.value()))
+        self.db.set_setting("pdf_subtitle_size", str(self.pdf_subtitle_size.value()))
+        self.db.set_setting("pdf_content_size", str(self.pdf_content_size.value()))
+        self.db.set_setting("pdf_time_size", str(self.pdf_time_size.value()))
         
         # İletişim bilgileri
         self.db.set_setting("footer_phone", self.phone_input.text())

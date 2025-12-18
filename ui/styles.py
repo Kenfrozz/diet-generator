@@ -10,6 +10,7 @@ Diğer dosyalar renklere bu dosyadaki COLORS sözlüğünden erişmelidir.
 COLORS = {
     # Arka planlar
     "bg_darkest": "#0f0f1a",       # En koyu (ana içerik alanı)
+    "bg_darker": "#151525",        # Biraz daha koyu (input hover/focus)
     "bg_dark": "#1a1a2e",          # Koyu (sidebar, kartlar, inputlar)
     "bg_card": "#1a1a2e",          # Kart arka planı (bg_dark ile aynı)
     "bg_hover": "#2a2a4a",         # Hover state

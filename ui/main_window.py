@@ -394,6 +394,31 @@ class MainWindow(QMainWindow):
         self.button_group.addButton(settings_btn, settings_idx)
         self.sidebar_layout.addWidget(settings_btn)
         
+        # Çıkış Yap butonu (en altta, Ayarlar'ın altında) - Finrise stili
+        logout_btn_style = """
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                border-radius: 8px;
+                color: #9999aa;
+                text-align: left;
+                padding-left: 14px;
+                margin: 2px 8px;
+            }
+            QPushButton:hover {
+                background-color: rgba(248, 113, 113, 0.2);
+                color: #f87171;
+            }
+        """
+        self.logout_btn = QPushButton()
+        self.logout_btn.setIcon(get_colored_icon("logout.svg", "#9999aa"))
+        self.logout_btn.setIconSize(QSize(22, 22))
+        self.logout_btn.setFixedHeight(48)
+        self.logout_btn.setStyleSheet(logout_btn_style)
+        self.logout_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.logout_btn.clicked.connect(self.logout_clicked)
+        self.sidebar_layout.addWidget(self.logout_btn)
+        
         root_layout.addWidget(self.sidebar_container)
         
         # Sağ taraf container (başlık çubuğu + içerik)
@@ -538,6 +563,40 @@ class MainWindow(QMainWindow):
                     btn.setIcon(get_colored_icon(icon_name, "#CBCDFF"))
                 else:
                     btn.setIcon(get_colored_icon(icon_name, "#9999aa"))
+        
+        # Logout buton metnini güncelle
+        if self.sidebar_expanded:
+            self.logout_btn.setText("  ÇIKIŞ YAP")
+            self.logout_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    border: none;
+                    border-radius: 8px;
+                    color: #9999aa;
+                    text-align: left;
+                    padding-left: 14px;
+                    margin: 2px 8px;
+                }
+                QPushButton:hover {
+                    background-color: rgba(248, 113, 113, 0.2);
+                    color: #f87171;
+                }
+            """)
+        else:
+            self.logout_btn.setText("")
+            self.logout_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    border: none;
+                    border-radius: 8px;
+                    color: #9999aa;
+                    margin: 2px 8px;
+                }
+                QPushButton:hover {
+                    background-color: rgba(248, 113, 113, 0.2);
+                    color: #f87171;
+                }
+            """)
     
     def on_nav_clicked(self, index: int):
         """Navigasyon butonuna tıklandığında."""
@@ -560,3 +619,24 @@ class MainWindow(QMainWindow):
             self.diet_templates.refresh_templates()
         elif index == 0:
             self.diet_creator.refresh_templates()
+    
+    def logout_clicked(self):
+        """Çıkış Yap butonuna tıklandığında login ekranına yönlendir."""
+        from .login_dialog import LoginDialog
+        from PyQt6.QtWidgets import QApplication
+        
+        # Oturum bilgisini temizle (çıkış yapıldığı için)
+        self.db.set_setting("remembered_user_id", "")
+        
+        # Ana pencereyi gizle
+        self.hide()
+        
+        # Login dialogunu göster
+        login_dialog = LoginDialog(self.db)
+        if login_dialog.exec() == LoginDialog.DialogCode.Accepted:
+            # Giriş başarılı - kullanıcı bilgilerini güncelle ve pencereyi göster
+            self.current_user = login_dialog.get_user()
+            self.show()
+        else:
+            # Giriş iptal edildi - uygulamadan çık
+            QApplication.quit()

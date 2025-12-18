@@ -271,7 +271,7 @@ class MealPoolWidget(QWidget):
         subtitle.setStyleSheet("color: #9999aa;")
         layout.addWidget(subtitle)
         
-        # Üst bar: Arama | Filtreler | Export | Ekle
+        # Üst bar: Arama | Filtreler | Ekle
         top_bar_layout = QHBoxLayout()
         
         # Arama kutusu
@@ -308,24 +308,6 @@ class MealPoolWidget(QWidget):
         top_bar_layout.addWidget(self.meal_filter)
         
         top_bar_layout.addStretch()
-        
-        # Export butonu
-        self.export_btn = QPushButton("  Export")
-        self.export_btn.setIcon(get_colored_icon("export.svg", "#FFFFFF"))
-        self.export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.export_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: 1px solid #2d2d50;
-                border-radius: 8px;
-                padding: 10px 20px;
-                color: #FFFFFF;
-            }
-            QPushButton:hover {
-                background-color: #2a2a4a;
-            }
-        """)
-        top_bar_layout.addWidget(self.export_btn)
         
         # Ekle butonu - Finrise gradient
         self.add_btn = QPushButton("  Yeni Tarif Ekle")
