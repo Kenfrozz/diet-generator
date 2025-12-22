@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+:root {
+  /* Dark Mode (Default) */
+  --bg-app: #1a1a2e;
+  --bg-panel: #282c34;
+  --bg-sidebar: #2c313c;
+  --bg-input: #21252b;
+  --text-main: #abb2bf;
+  --text-muted: #5c6370;
+  --border-color: rgba(255, 255, 255, 0.1);
+
+  --color-accent: #c678dd;
+}
+
+.light {
+  /* Light Mode */
+  --bg-app: #f8f9fa;
+  --bg-panel: #ffffff;
+  --bg-sidebar: #f1f2f4;
+  --bg-input: #e2e4e8;
+  --text-main: #2d3748;
+  --text-muted: #718096;
+  --border-color: rgba(0, 0, 0, 0.1);
+
+  --color-accent: #8e44ad;
+}
+
+@theme {
+  --color-finrise-dark: var(--bg-app);
+  --color-finrise-panel: var(--bg-panel);
+  --color-finrise-sidebar: var(--bg-sidebar);
+  --color-finrise-input: var(--bg-input);
+  --color-finrise-text: var(--text-main);
+  --color-finrise-muted: var(--text-muted);
+  --color-finrise-border: var(--border-color);
+  --color-finrise-accent: var(--color-accent);
+
+  --color-finrise-blue: #61afef;
+  --color-finrise-green: #98c379;
+  --color-finrise-red: #e06c75;
+}
+
+@layer base {
+  body {
+    @apply bg-finrise-panel text-finrise-text font-sans h-screen overflow-hidden;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #21252b;
+}
+::-webkit-scrollbar-thumb {
+  background: #4b5263;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #5c6370;
+}
+
+/* Utility to hide number input spinners */
+.no-spinner::-webkit-inner-spin-button, 
+.no-spinner::-webkit-outer-spin-button { 
+  -webkit-appearance: none !important; 
+  margin: 0 !important; 
+}
+.no-spinner {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
