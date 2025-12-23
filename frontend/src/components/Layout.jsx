@@ -4,10 +4,18 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useNotes } from '../context/NotesContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function Layout() {
   const { activeAlert, setActiveAlert, handleNoteSelect } = useNotes();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (!user) {
+      navigate('/login');
+    }
+  }, [navigate]);
 
   return (
     <div className="h-screen bg-finrise-dark flex overflow-hidden relative">

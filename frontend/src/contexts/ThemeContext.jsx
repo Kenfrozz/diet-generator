@@ -15,7 +15,7 @@ export function ThemeProvider({ children }) {
 
   // Custom color overrides - Split by mode
   const [customColors, setCustomColors] = useState(() => {
-    const stored = localStorage.getItem("customColors");
+    const stored = localStorage.getItem("customColors_v2");
     if (stored) {
         try {
             const parsed = JSON.parse(stored);
@@ -77,7 +77,7 @@ export function ThemeProvider({ children }) {
     
     // Save
     localStorage.setItem("theme", theme);
-    localStorage.setItem("customColors", JSON.stringify(customColors));
+    localStorage.setItem("customColors_v2", JSON.stringify(customColors));
     // localStorage.setItem("season", season); // No need to save season locally anymore
 
   }, [theme, customColors]); // Removed season from deps as it doesn't affect theme directly unless we want it to

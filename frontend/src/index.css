@@ -2,7 +2,7 @@
 
 :root {
   /* Dark Mode (Default) */
-  --bg-app: #1a1a2e;
+  --bg-app: #0f172a;
   --bg-panel: #282c34;
   --bg-sidebar: #2c313c;
   --bg-input: #21252b;
@@ -10,7 +10,7 @@
   --text-muted: #5c6370;
   --border-color: rgba(255, 255, 255, 0.1);
 
-  --color-accent: #c678dd;
+  --color-accent: #e91d7c;
 }
 
 .light {
@@ -23,7 +23,7 @@
   --text-muted: #718096;
   --border-color: rgba(0, 0, 0, 0.1);
 
-  --color-accent: #8e44ad;
+  --color-accent: #e91d7c;
 }
 
 @theme {

@@ -12,6 +12,9 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 1024,
+    minHeight: 768,
+    title: 'DiyetKent',
     frame: false, // Remove native window frame
     webPreferences: {
       nodeIntegration: true,

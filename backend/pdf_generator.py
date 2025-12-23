@@ -2,10 +2,11 @@
 PDF oluşturucu modülü - ReportLab ile Türkçe destekli PDF oluşturma.
 """
 import os
+import datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
 from reportlab.lib import colors
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -78,6 +79,36 @@ class PDFGenerator:
     def _setup_styles(self):
         """Stil şablonlarını oluştur."""
         self.styles = getSampleStyleSheet()
+        
+        # Kapak başlık stili
+        self.styles.add(ParagraphStyle(
+            name='CoverTitleStyle',
+            fontName=self.font_name,
+            fontSize=24,
+            leading=30,
+            alignment=TA_CENTER,
+            spaceBefore=40,
+            spaceAfter=30,
+            textColor=colors.HexColor('#27ae60')
+        ))
+        
+        # Kapak bilgi label stili
+        self.styles.add(ParagraphStyle(
+            name='CoverLabelStyle',
+            fontName=self.font_name,
+            fontSize=12,
+            leading=16,
+            textColor=colors.HexColor('#2c3e50')
+        ))
+        
+        # Kapak bilgi değer stili
+        self.styles.add(ParagraphStyle(
+            name='CoverValueStyle',
+            fontName=self.font_name,
+            fontSize=12,
+            leading=16,
+            textColor=colors.black
+        ))
         
         # Gün başlığı stili (ortalı, yeşil)
         self.styles.add(ParagraphStyle(
@@ -215,8 +246,89 @@ class PDFGenerator:
         
         canvas.restoreState()
     
+    def _create_cover_page(self, elements, patient_info: dict, start_date: str):
+        """Kapak sayfası oluştur."""
+        # Başlık
+        elements.append(Paragraph("<b>KİŞİYE ÖZEL BESLENME PROGRAMI</b>", self.styles['CoverTitleStyle']))
+        elements.append(Spacer(1, 40))
+        
+        weight = patient_info.get('weight', 0)
+        height = patient_info.get('height', 0)
+        birth_year = patient_info.get('birth_year', 0)
+        end_date = patient_info.get('end_date', '')
+        patient_name = patient_info.get('patient_name', '')
+        
+        # Hesaplamalar
+        current_year = datetime.datetime.now().year
+        yas = current_year - birth_year if birth_year else 0
+        
+        # BKİ hesapla
+        height_m = height / 100 if height else 1
+        bki = weight / (height_m * height_m) if height_m else 0
+        
+        # İdeal ve geçmemesi gereken kilo hesapla
+        if yas < 35:
+            ideal_kilo = height_m * height_m * 21
+            gecmemesi_gereken = height_m * height_m * 27
+        elif 35 <= yas <= 45:
+            ideal_kilo = height_m * height_m * 22
+            gecmemesi_gereken = height_m * height_m * 28
+        else:
+            ideal_kilo = height_m * height_m * 23
+            gecmemesi_gereken = height_m * height_m * 30
+        
+        # Bilgi tablosu
+        table_data = [
+            ["Ad Soyad", patient_name.upper()],
+            ["Başlangıç Kilosu", f"{weight:.1f} kg" if weight else "-"],
+            ["Boy", f"{height:.0f} cm" if height else "-"],
+            ["Yaş", f"{yas} yaş" if yas else "-"],
+            ["BKİ (Vücut Kitle İndeksi)", f"{bki:.1f}" if bki else "-"],
+            ["İdeal Kilo", f"{ideal_kilo:.1f} kg" if ideal_kilo else "-"],
+            ["Geçmemeniz Gereken Kilo", f"{gecmemesi_gereken:.1f} kg" if gecmemesi_gereken else "-"],
+            ["Başlangıç Tarihi", start_date if start_date else "-"],
+            ["Kontrol Tarihi", end_date if end_date else "-"],
+        ]
+        
+        # Tablo stilini oluştur
+        table_style = TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), self.font_name),
+            ('FONTSIZE', (0, 0), (-1, -1), 12),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f5f5f5')),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2c3e50')),
+            ('FONTNAME', (0, 0), (0, -1), self.font_name),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#dddddd')),
+            # İdeal kilo - yeşil
+            ('TEXTCOLOR', (1, 5), (1, 5), colors.HexColor('#27ae60')),
+            ('FONTNAME', (1, 5), (1, 5), self.font_name),
+            # Geçmemesi gereken - kırmızı
+            ('TEXTCOLOR', (1, 6), (1, 6), colors.HexColor('#e74c3c')),
+            ('FONTNAME', (1, 6), (1, 6), self.font_name),
+        ])
+        
+        # BKİ değerine göre renk ayarla
+        if bki:
+            if bki < 26:
+                bki_color = colors.HexColor('#27ae60')  # Yeşil
+            elif bki < 30:
+                bki_color = colors.HexColor('#f39c12')  # Turuncu
+            else:
+                bki_color = colors.HexColor('#e74c3c')  # Kırmızı
+            table_style.add('TEXTCOLOR', (1, 4), (1, 4), bki_color)
+        
+        table = Table(table_data, colWidths=[6*cm, 9*cm])
+        table.setStyle(table_style)
+        
+        elements.append(table)
+        elements.append(PageBreak())
+    
     def create_diet_pdf(self, file_path: str, diet_program: list, 
-                        template_name: str, pool_type: str, bki_group: str):
+                        template_name: str, pool_type: str, bki_group: str,
+                        patient_info: dict = None, start_date: str = None):
         """Diyet programı PDF'i oluştur.
         
         Args:
@@ -225,6 +337,8 @@ class PDFGenerator:
             template_name: Kalıp adı
             pool_type: Havuz türü
             bki_group: BKİ grubu
+            patient_info: Hasta bilgileri (opsiyonel, kapak sayfası için)
+            start_date: Başlangıç tarihi (opsiyonel)
         """
         doc = SimpleDocTemplate(
             file_path,
@@ -236,6 +350,10 @@ class PDFGenerator:
         )
         
         elements = []
+        
+        # Kapak sayfası (eğer hasta bilgileri varsa)
+        if patient_info:
+            self._create_cover_page(elements, patient_info, start_date or '')
         
         # Her gün için içerik oluştur (her gün ayrı sayfa)
         for i, day_data in enumerate(diet_program):

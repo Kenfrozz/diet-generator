@@ -119,7 +119,33 @@ class Database:
         conn = self.connect()
         cursor = conn.cursor()
         
-        # Havuzlar tablosu (yeni)
+        # Paketler tablosu (yeni sistem - havuzları değiştirir)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS packages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                save_path TEXT NOT NULL,
+                list_count INTEGER NOT NULL DEFAULT 1,
+                days_per_list INTEGER NOT NULL DEFAULT 7,
+                weight_change_per_list REAL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Tarif-Paket ilişki tablosu (Many-to-Many)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS recipe_packages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recipe_id INTEGER NOT NULL,
+                package_id INTEGER NOT NULL,
+                FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
+                FOREIGN KEY (package_id) REFERENCES packages(id) ON DELETE CASCADE,
+                UNIQUE(recipe_id, package_id)
+            )
+        """)
+        
+        # Eski havuzlar tablosu (geriye uyumluluk için korunuyor, yeni kayıt eklenmeyecek)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS pools (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -139,7 +165,7 @@ class Database:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 meal_type TEXT NOT NULL,
-                pool_type TEXT NOT NULL,
+                pool_type TEXT,
                 bki_21_25 TEXT NOT NULL,
                 bki_26_29 TEXT NOT NULL,
                 bki_30_33 TEXT NOT NULL,
@@ -189,16 +215,34 @@ class Database:
                 is_active BOOLEAN DEFAULT 1,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 last_login DATETIME,
-                avatar_path TEXT
+                avatar_path TEXT,
+                security_question TEXT,
+                security_answer_hash TEXT
             )
         """)
         
-        # Migrasyon: avatar_path sütunu yoksa ekle (Mevcut veritabanları için)
+        # Migrasyon: avatar_path sütunu yoksa ekle
         try:
             cursor.execute("SELECT avatar_path FROM users LIMIT 1")
         except sqlite3.OperationalError:
             print("Migrating database: Adding avatar_path column...")
             cursor.execute("ALTER TABLE users ADD COLUMN avatar_path TEXT")
+            conn.commit()
+
+        # Migrasyon: security_question sütunu yoksa ekle
+        try:
+            cursor.execute("SELECT security_question FROM users LIMIT 1")
+        except sqlite3.OperationalError:
+            print("Migrating database: Adding security_question column...")
+            cursor.execute("ALTER TABLE users ADD COLUMN security_question TEXT")
+            conn.commit()
+
+        # Migrasyon: security_answer_hash sütunu yoksa ekle
+        try:
+            cursor.execute("SELECT security_answer_hash FROM users LIMIT 1")
+        except sqlite3.OperationalError:
+            print("Migrating database: Adding security_answer_hash column...")
+            cursor.execute("ALTER TABLE users ADD COLUMN security_answer_hash TEXT")
             conn.commit()
         
         # Varsayılan havuzları ekle
@@ -770,11 +814,25 @@ class Database:
         conn = self.connect()
         cursor = conn.cursor()
         
-        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
-        row = cursor.fetchone()
+        # Windows cp1252 encoding hatasını önlemek için tüm kullanıcıları çekip Python'da filtrele
+        try:
+            cursor.execute("SELECT * FROM users")
+            rows = cursor.fetchall()
+        finally:
+            self.close()
         
-        self.close()
-        return dict(row) if row else None
+        # Exact match
+        for row in rows:
+            if row['username'] == username:
+                return dict(row)
+                
+        # Case insensitive match
+        target_lower = username.lower()
+        for row in rows:
+            if row['username'].lower() == target_lower:
+                return dict(row)
+                
+        return None
     
     def get_all_users(self) -> list:
         """Tüm kullanıcıları getir."""
@@ -797,6 +855,83 @@ class Database:
         conn.commit()
         self.close()
     
+    def update_user_profile(self, user_id: int, username: str = None, password: str = None, avatar_path: str = None, security_question: str = None, security_answer: str = None) -> bool:
+        """Kullanıcı profil bilgilerini güncelle."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        fields = []
+        values = []
+        
+        if username:
+            fields.append("username = ?")
+            values.append(username)
+            # Eğer kullanıcı adı değişiyorsa display_name'i de güncelle (isteğe bağlı)
+            fields.append("display_name = ?")
+            values.append(username)
+            
+        if password:
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            fields.append("password_hash = ?")
+            values.append(password_hash)
+            
+        if avatar_path:
+            fields.append("avatar_path = ?")
+            values.append(avatar_path)
+            
+        if security_question:
+            fields.append("security_question = ?")
+            values.append(security_question)
+            
+        if security_answer:
+            security_answer_hash = bcrypt.hashpw(security_answer.lower().strip().encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            fields.append("security_answer_hash = ?")
+            values.append(security_answer_hash)
+            
+        if not fields:
+            self.close()
+            return False
+            
+        values.append(user_id)
+        
+        try:
+            cursor.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = ?", values)
+            conn.commit()
+            success = True
+        except sqlite3.IntegrityError:  # Örn: Kullanıcı adı zaten varsa
+            success = False
+        finally:
+            self.close()
+            
+        return success
+
+    def reset_password_with_security_answer(self, username: str, security_answer: str, new_password: str) -> bool:
+        """Güvenlik sorusunu doğrulayarak şifre sıfırla."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT id, security_answer_hash FROM users WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        
+        if not row or not row['security_answer_hash']:
+            self.close()
+            return False
+            
+        # Cevabı doğrula
+        try:
+            if bcrypt.checkpw(security_answer.lower().strip().encode('utf-8'), row['security_answer_hash'].encode('utf-8')):
+                # Yeni şifreyi hashle ve kaydet
+                new_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, row['id']))
+                conn.commit()
+                self.close()
+                return True
+        except ValueError:
+            pass # Hash formatı bozuksa
+            
+        self.close()
+        return False
+
     def update_user(self, user_id: int, role: str, is_active: bool, avatar_path: str = None):
         """Kullanıcı bilgilerini güncelle."""
         conn = self.connect()
@@ -837,3 +972,177 @@ class Database:
             return False
             
         return bcrypt.checkpw(password.encode('utf-8'), row['password_hash'].encode('utf-8'))
+
+    # ==================== PAKET İŞLEMLERİ (YENİ SİSTEM) ====================
+    
+    def add_package(self, name: str, save_path: str, list_count: int = 1, 
+                    days_per_list: int = 7, weight_change_per_list: float = 0,
+                    description: str = "") -> int:
+        """Yeni paket ekle."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO packages (name, description, save_path, list_count, days_per_list, weight_change_per_list)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (name, description, save_path, list_count, days_per_list, weight_change_per_list))
+        
+        package_id = cursor.lastrowid
+        conn.commit()
+        self.close()
+        return package_id
+    
+    def update_package(self, package_id: int, name: str, save_path: str, 
+                       list_count: int, days_per_list: int, 
+                       weight_change_per_list: float, description: str = ""):
+        """Paketi güncelle."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE packages 
+            SET name = ?, description = ?, save_path = ?, list_count = ?, 
+                days_per_list = ?, weight_change_per_list = ?
+            WHERE id = ?
+        """, (name, description, save_path, list_count, days_per_list, 
+              weight_change_per_list, package_id))
+        
+        conn.commit()
+        self.close()
+    
+    def delete_package(self, package_id: int):
+        """Paketi sil."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        # Önce tarif-paket ilişkilerini sil
+        cursor.execute("DELETE FROM recipe_packages WHERE package_id = ?", (package_id,))
+        # Sonra paketi sil
+        cursor.execute("DELETE FROM packages WHERE id = ?", (package_id,))
+        
+        conn.commit()
+        self.close()
+    
+    def get_package(self, package_id: int) -> Optional[dict]:
+        """Tek bir paketi getir."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM packages WHERE id = ?", (package_id,))
+        row = cursor.fetchone()
+        
+        self.close()
+        return dict(row) if row else None
+    
+    def get_all_packages(self) -> list:
+        """Tüm paketleri getir."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM packages ORDER BY name")
+        rows = cursor.fetchall()
+        
+        self.close()
+        return [dict(row) for row in rows]
+    
+    # ==================== TARİF-PAKET İLİŞKİ İŞLEMLERİ ====================
+    
+    def add_recipe_to_packages(self, recipe_id: int, package_ids: list):
+        """Tarifi belirtilen paketlere ekle."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        # Önce mevcut ilişkileri sil
+        cursor.execute("DELETE FROM recipe_packages WHERE recipe_id = ?", (recipe_id,))
+        
+        # Yeni ilişkileri ekle
+        for package_id in package_ids:
+            cursor.execute("""
+                INSERT OR IGNORE INTO recipe_packages (recipe_id, package_id) VALUES (?, ?)
+            """, (recipe_id, package_id))
+        
+        conn.commit()
+        self.close()
+    
+    def remove_recipe_from_package(self, recipe_id: int, package_id: int):
+        """Tarifi paketten çıkar."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            DELETE FROM recipe_packages WHERE recipe_id = ? AND package_id = ?
+        """, (recipe_id, package_id))
+        
+        conn.commit()
+        self.close()
+    
+    def get_recipe_packages(self, recipe_id: int) -> list:
+        """Tarifin dahil olduğu paketleri getir."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT p.* FROM packages p
+            INNER JOIN recipe_packages rp ON p.id = rp.package_id
+            WHERE rp.recipe_id = ?
+            ORDER BY p.name
+        """, (recipe_id,))
+        rows = cursor.fetchall()
+        
+        self.close()
+        return [dict(row) for row in rows]
+    
+    def get_recipes_by_package(self, package_id: int, meal_type: str = None) -> list:
+        """Pakete ait tarifleri getir (opsiyonel öğün tipi filtresi ile)."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        query = """
+            SELECT r.* FROM recipes r
+            INNER JOIN recipe_packages rp ON r.id = rp.recipe_id
+            WHERE rp.package_id = ?
+        """
+        params = [package_id]
+        
+        if meal_type:
+            query += " AND r.meal_type = ?"
+            params.append(meal_type)
+        
+        query += " ORDER BY r.name"
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        
+        self.close()
+        return [dict(row) for row in rows]
+    
+    def get_recipes_for_diet_by_package(self, package_id: int, meal_type: str, 
+                                         exclude_keywords: list = None) -> list:
+        """Diyet oluşturmak için pakete ait tarifleri getir (hariç tutma filtresi ile)."""
+        recipes = self.get_recipes_by_package(package_id, meal_type)
+        
+        # Hariç tutma filtresi uygula
+        if exclude_keywords:
+            filtered_recipes = []
+            for recipe in recipes:
+                exclude = False
+                for keyword in exclude_keywords:
+                    keyword_lower = keyword.lower().strip()
+                    if keyword_lower:
+                        # Tüm BKİ içeriklerinde ara
+                        all_content = " ".join([
+                            recipe.get('name', '').lower(),
+                            recipe.get('bki_21_25', '').lower(),
+                            recipe.get('bki_26_29', '').lower(),
+                            recipe.get('bki_30_33', '').lower(),
+                            recipe.get('bki_34_plus', '').lower()
+                        ])
+                        if keyword_lower in all_content:
+                            exclude = True
+                            break
+                if not exclude:
+                    filtered_recipes.append(recipe)
+            recipes = filtered_recipes
+        
+        return recipes
+

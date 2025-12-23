@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { Minus, X, Sun, Moon, Square } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTheme } from '../contexts/ThemeContext';
+import { useApp } from '../contexts/AppContext';
 
 const { ipcRenderer } = window.require('electron');
 
 export function TitleBar() {
+  const { appSettings } = useApp();
   const [isMaximized, setIsMaximized] = useState(false);
   const { theme, setTheme, season } = useTheme();
   
@@ -32,15 +34,15 @@ export function TitleBar() {
   const handleMaximize = () => {
     // Send toggle command
     ipcRenderer.send('window-maximize');
-    // Optimistic update - although the event will correct it shortly
-    // setIsMaximized(!isMaximized); 
+    // Optimistic update
+    setIsMaximized(!isMaximized); 
   };
 
   // Custom Icons
   const RestoreIcon = () => (
     <svg width="10" height="10" viewBox="0 0 10 10" className="fill-none stroke-current stroke-[1.5]">
-      <rect x="2.5" y="2.5" width="7" height="7" />
-      <path d="M7.5 2.5V0.5H0.5V7.5H2.5" />
+      <rect x="0.5" y="2.5" width="7" height="7" />
+      <path d="M2.5 2.5V0.5H9.5V7.5H7.5" />
     </svg>
   );
 
@@ -51,6 +53,11 @@ export function TitleBar() {
   return (
     <div className="h-[32px] bg-finrise-input flex items-center justify-between select-none z-50 border-b border-finrise-border w-full relative" style={{ WebkitAppRegion: 'drag' }}>
       
+      {/* Centered Title */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+         <span className="text-xs font-medium text-finrise-muted/80 tracking-wide">{appSettings?.app_title || 'DiyetKent'}</span>
+      </div>
+
       {/* Spacer */}
       <div className="flex-1"></div>
 
@@ -60,7 +67,7 @@ export function TitleBar() {
         {/* Theme Toggle */}
         <button 
             onClick={toggleTheme}
-            className="w-[46px] h-full flex items-center justify-center hover:bg-white/10 text-finrise-muted hover:text-finrise-accent transition-colors outline-none border-l border-r border-finrise-border"
+            className="w-[46px] h-full flex items-center justify-center hover:bg-white/10 text-finrise-muted hover:text-finrise-accent transition-colors outline-none border-r border-finrise-border"
             title={isDarkMode ? "Aydınlık Moda Geç" : "Karanlık Moda Geç"}
         >
             {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
