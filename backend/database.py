@@ -204,6 +204,21 @@ class Database:
             )
         """)
         
+        # Randevular tablosu
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS appointments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_name TEXT NOT NULL,
+                phone TEXT,
+                date TEXT NOT NULL,
+                time TEXT NOT NULL,
+                types TEXT,
+                note TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
         # Kullanıcılar tablosu
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -1146,3 +1161,96 @@ class Database:
         
         return recipes
 
+    # --- Appointment Methods ---
+    
+    def add_appointment(self, client_name: str, phone: str, date: str, time: str, 
+                        types: list, note: str, status: str = 'pending') -> int:
+        """Yeni randevu ekle."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        types_str = ','.join(types) if types else ''
+        
+        cursor.execute("""
+            INSERT INTO appointments (client_name, phone, date, time, types, note, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (client_name, phone, date, time, types_str, note, status))
+        
+        appointment_id = cursor.lastrowid
+        conn.commit()
+        self.close()
+        return appointment_id
+    
+    def update_appointment(self, appointment_id: int, client_name: str, phone: str, 
+                          date: str, time: str, types: list, note: str, status: str):
+        """Randevuyu güncelle."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        types_str = ','.join(types) if types else ''
+        
+        cursor.execute("""
+            UPDATE appointments 
+            SET client_name = ?, phone = ?, date = ?, time = ?, types = ?, note = ?, status = ?
+            WHERE id = ?
+        """, (client_name, phone, date, time, types_str, note, status, appointment_id))
+        
+        conn.commit()
+        self.close()
+    
+    def delete_appointment(self, appointment_id: int):
+        """Randevuyu sil."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        cursor.execute("DELETE FROM appointments WHERE id = ?", (appointment_id,))
+        
+        conn.commit()
+        self.close()
+    
+    def get_appointment(self, appointment_id: int) -> dict:
+        """Tek bir randevuyu getir."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM appointments WHERE id = ?", (appointment_id,))
+        row = cursor.fetchone()
+        
+        self.close()
+        
+        if row:
+            result = dict(row)
+            result['types'] = result['types'].split(',') if result['types'] else []
+            return result
+        return None
+    
+    def get_all_appointments(self, date: str = None) -> list:
+        """Tüm randevuları getir (opsiyonel tarih filtresi)."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        if date:
+            cursor.execute("SELECT * FROM appointments WHERE date = ? ORDER BY time", (date,))
+        else:
+            cursor.execute("SELECT * FROM appointments ORDER BY date, time")
+        
+        rows = cursor.fetchall()
+        self.close()
+        
+        result = []
+        for row in rows:
+            appointment = dict(row)
+            appointment['types'] = appointment['types'].split(',') if appointment['types'] else []
+            result.append(appointment)
+        
+        return result
+    
+    def update_appointment_status(self, appointment_id: int, status: str):
+        """Randevu durumunu güncelle."""
+        conn = self.connect()
+        cursor = conn.cursor()
+        
+        cursor.execute("UPDATE appointments SET status = ? WHERE id = ?", (status, appointment_id))
+        
+        conn.commit()
+        self.close()

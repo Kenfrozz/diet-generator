@@ -48,8 +48,8 @@ export function Sidebar() {
     navigate('/login');
   };
 
-  const toggleGroup = (label) => {
-    setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
+  const setGroupOpen = (label, isOpen) => {
+    setOpenGroups(prev => ({ ...prev, [label]: isOpen }));
   };
 
   const menuItems = [
@@ -129,10 +129,14 @@ export function Sidebar() {
             const isActiveGroup = item.children.some(child => location.pathname === child.path);
 
             return (
-              <div key={item.label} className="px-0 relative">
+              <div 
+                key={item.label} 
+                className="px-0 relative"
+                onMouseEnter={() => setGroupOpen(item.label, true)}
+                onMouseLeave={() => setGroupOpen(item.label, false)}
+              >
                  {/* Group Header */}
-                 <button
-                    onClick={() => toggleGroup(item.label)}
+                 <div
                     className={cn(
                       "flex items-center relative w-full h-[40px] px-0 cursor-pointer outline-none transition-colors",
                       isOpen ? "text-finrise-text" : "text-finrise-muted hover:text-finrise-text hover:bg-finrise-input/30"
@@ -161,7 +165,7 @@ export function Sidebar() {
                       {item.label}
                       <ChevronRight size={14} className={cn("transition-transform duration-200", isOpen ? "rotate-90" : "")} />
                     </span>
-                 </button>
+                 </div>
 
                  {/* Collapsed Mode: Vertical Icons */}
                  {collapsed && (
@@ -374,37 +378,6 @@ export function Sidebar() {
           </NavLink>
         );
         })}
-
-
-
-        {/* Logout */}
-        <button 
-            onClick={handleLogout}
-            className={cn(
-                "flex items-center w-full text-finrise-red hover:bg-finrise-red/10 transition-all duration-200 group h-[50px] relative px-0 border-t border-finrise-border",
-            )}
-            title={collapsed ? "Çıkış Yap" : ""}
-        >
-          <div className={cn(
-              "flex items-center justify-center shrink-0 transition-all duration-300 h-full",
-              collapsed ? "w-full" : "w-[52px]"
-          )}>
-            <LogOut 
-              className={cn(
-                  "transition-all duration-300",
-                  collapsed ? "w-5 h-5" : "w-[18px] h-[18px]",
-                  "opacity-70 group-hover:opacity-100"
-              )}
-            />
-          </div>
-
-          <span className={cn(
-            "absolute left-[52px] text-[14px] font-medium whitespace-nowrap transition-all duration-300 top-1/2 -translate-y-1/2",
-            collapsed ? "opacity-0 -translate-x-4 pointer-events-none" : "opacity-100 translate-x-0"
-          )}>
-            Çıkış Yap
-          </span>
-        </button>
       </div>
     </div>
   );

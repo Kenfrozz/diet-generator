@@ -74,9 +74,12 @@ class UserProfileUpdate(BaseModel):
 # --- Recipe Models ---
 class RecipeRequest(BaseModel):
     name: str
-    content: str
     meal_type: str
     pool_type: str
+    bki_21_25: str
+    bki_26_29: Optional[str] = None
+    bki_30_33: Optional[str] = None
+    bki_34_plus: Optional[str] = None
 
 # --- API Endpoints ---
 
@@ -212,15 +215,15 @@ def get_recipes(pool_type: Optional[str] = None):
 def create_recipe(recipe: RecipeRequest):
     db = get_db()
     try:
-        # Pass content to all BMI fields
+        # Use BMI-specific fields, fallback to bki_21_25 if not provided
         db.add_recipe(
             recipe.name, 
             recipe.meal_type, 
             recipe.pool_type, 
-            recipe.content, # bki_21_25
-            recipe.content, # bki_26_29
-            recipe.content, # bki_30_33
-            recipe.content  # bki_34_plus
+            recipe.bki_21_25,
+            recipe.bki_26_29 or recipe.bki_21_25,
+            recipe.bki_30_33 or recipe.bki_21_25,
+            recipe.bki_34_plus or recipe.bki_21_25
         )
         return {"status": "success", "message": "Recipe added successfully"}
     except Exception as e:
@@ -230,16 +233,16 @@ def create_recipe(recipe: RecipeRequest):
 def update_recipe(recipe_id: int, recipe: RecipeRequest):
     db = get_db()
     try:
-        # Pass content to all BMI fields
+        # Use BMI-specific fields, fallback to bki_21_25 if not provided
         db.update_recipe(
             recipe_id,
             recipe.name, 
             recipe.meal_type, 
             recipe.pool_type, 
-            recipe.content, # bki_21_25
-            recipe.content, # bki_26_29
-            recipe.content, # bki_30_33
-            recipe.content  # bki_34_plus
+            recipe.bki_21_25,
+            recipe.bki_26_29 or recipe.bki_21_25,
+            recipe.bki_30_33 or recipe.bki_21_25,
+            recipe.bki_34_plus or recipe.bki_21_25
         )
         return {"status": "success", "message": "Recipe updated successfully"}
     except Exception as e:
@@ -485,6 +488,89 @@ def remove_recipe_from_package(recipe_id: int, package_id: int):
     try:
         db.remove_recipe_from_package(recipe_id, package_id)
         return {"status": "success", "message": "Recipe removed from package successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- Appointment Endpoints ---
+
+class AppointmentRequest(BaseModel):
+    clientName: str
+    phone: Optional[str] = None
+    date: str
+    time: str
+    types: list = []
+    note: Optional[str] = None
+    status: Optional[str] = 'pending'
+
+@app.get("/api/appointments")
+def get_appointments(date: Optional[str] = None):
+    db = get_db()
+    appointments = db.get_all_appointments(date)
+    # Convert snake_case to camelCase for frontend
+    result = []
+    for app in appointments:
+        result.append({
+            "id": app["id"],
+            "clientName": app["client_name"],
+            "phone": app["phone"],
+            "date": app["date"],
+            "time": app["time"],
+            "types": app["types"],
+            "note": app["note"],
+            "status": app["status"]
+        })
+    return result
+
+@app.post("/api/appointments")
+def create_appointment(request: AppointmentRequest):
+    db = get_db()
+    try:
+        appointment_id = db.add_appointment(
+            request.clientName,
+            request.phone,
+            request.date,
+            request.time,
+            request.types,
+            request.note,
+            request.status
+        )
+        return {"status": "success", "id": appointment_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/appointments/{appointment_id}")
+def update_appointment(appointment_id: int, request: AppointmentRequest):
+    db = get_db()
+    try:
+        db.update_appointment(
+            appointment_id,
+            request.clientName,
+            request.phone,
+            request.date,
+            request.time,
+            request.types,
+            request.note,
+            request.status
+        )
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.patch("/api/appointments/{appointment_id}/status")
+def update_appointment_status(appointment_id: int, status: str):
+    db = get_db()
+    try:
+        db.update_appointment_status(appointment_id, status)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/appointments/{appointment_id}")
+def delete_appointment(appointment_id: int):
+    db = get_db()
+    try:
+        db.delete_appointment(appointment_id)
+        return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

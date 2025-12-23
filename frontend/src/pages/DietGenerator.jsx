@@ -183,18 +183,6 @@ export default function DietGenerator() {
         <p className="text-sm text-finrise-muted">Kişiye özel beslenme programı oluşturun</p>
       </div>
 
-      {/* Success Message */}
-      {success && (
-        <div className="mb-6 bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
-          <CheckCircle className="text-emerald-500 shrink-0 mt-0.5" size={20} />
-          <div>
-            <p className="font-medium text-emerald-500">{success.message}</p>
-            <div className="text-xs font-mono text-finrise-muted mt-2 space-y-0.5">
-              {success.files?.map((f, i) => <div key={i}>{f}</div>)}
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
@@ -501,6 +489,19 @@ export default function DietGenerator() {
           )}
         </div>
       </div>
+
+      {/* Success Message - Bottom */}
+      {success && (
+        <div className="mt-6 bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
+          <CheckCircle className="text-emerald-500 shrink-0 mt-0.5" size={20} />
+          <div>
+            <p className="font-medium text-emerald-500">{success.message}</p>
+            <div className="text-xs font-mono text-finrise-muted mt-2 space-y-0.5">
+              {success.files?.map((f, i) => <div key={i}>{f}</div>)}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
