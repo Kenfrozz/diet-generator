@@ -180,31 +180,25 @@ export default function DietPackages() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 px-6 pb-6 overflow-hidden">
+      <div className="flex-1 px-6 pb-6 overflow-hidden min-h-0">
         <div className="bg-finrise-panel border border-finrise-border rounded-2xl overflow-hidden h-full flex flex-col">
-          <div className="overflow-auto flex-1 custom-scrollbar">
+          <div className="overflow-y-auto flex-1">
             <table className="w-full text-left border-collapse">
               <thead className="bg-finrise-input sticky top-0 z-10">
                 <tr>
-                  <th className="p-4 font-semibold text-finrise-text border-b border-finrise-border w-[25%]">
+                  <th className="p-4 font-semibold text-finrise-text border-b border-finrise-border">
                     Paket Adı
                   </th>
-                  <th className="p-4 font-semibold text-finrise-text border-b border-finrise-border w-[20%]">
-                    Kayıt Yolu
+                  <th className="p-4 font-semibold text-finrise-text border-b border-finrise-border text-center">
+                    Liste
                   </th>
-                  <th className="p-4 font-semibold text-finrise-text border-b border-finrise-border w-[12%] text-center">
-                    Liste Sayısı
+                  <th className="p-4 font-semibold text-finrise-text border-b border-finrise-border text-center">
+                    Kilo/Liste
                   </th>
-                  <th className="p-4 font-semibold text-finrise-text border-b border-finrise-border w-[12%] text-center">
-                    Liste Süresi
-                  </th>
-                  <th className="p-4 font-semibold text-finrise-text border-b border-finrise-border w-[15%]">
-                    Kilo Hedefi
-                  </th>
-                  <th className="p-4 font-semibold text-finrise-text border-b border-finrise-border w-[16%]">
+                  <th className="p-4 font-semibold text-finrise-text border-b border-finrise-border text-center">
                     Toplam
                   </th>
-                  <th className="p-4 font-semibold text-finrise-text border-b border-finrise-border w-[10%] text-center">
+                  <th className="p-4 font-semibold text-finrise-text border-b border-finrise-border text-center w-24">
                     İşlemler
                   </th>
                 </tr>
@@ -213,7 +207,7 @@ export default function DietPackages() {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan="7"
+                      colSpan="5"
                       className="p-8 text-center text-finrise-muted"
                     >
                       Yükleniyor...
@@ -222,7 +216,7 @@ export default function DietPackages() {
                 ) : filteredPackages.length === 0 ? (
                   <tr>
                     <td
-                      colSpan="7"
+                      colSpan="5"
                       className="p-8 text-center text-finrise-muted"
                     >
                       Paket bulunamadı.
@@ -238,89 +232,72 @@ export default function DietPackages() {
                       >
                         <td className="p-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 text-orange-500 flex items-center justify-center shrink-0 shadow-sm">
                               <Package size={20} />
                             </div>
-                            <div>
-                              <div className="font-bold text-finrise-text">
+                            <div className="min-w-0">
+                              <div className="font-semibold text-finrise-text truncate">
                                 {pkg.name}
                               </div>
                               {pkg.description && (
-                                <div className="text-xs text-finrise-muted">
+                                <div className="text-xs text-finrise-muted truncate">
                                   {pkg.description}
                                 </div>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2 text-sm text-finrise-muted font-mono bg-finrise-input/50 px-2 py-1 rounded inline-flex max-w-full overflow-hidden">
-                            <Folder size={14} className="shrink-0" />
-                            <span className="truncate">{pkg.save_path}</span>
-                          </div>
-                        </td>
                         <td className="p-4 text-center">
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500 text-sm font-medium">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-sm font-medium">
                             <FileText size={14} />
-                            {pkg.list_count}
+                            {pkg.list_count} × {pkg.days_per_list} gün
                           </div>
                         </td>
                         <td className="p-4 text-center">
-                          <div className="inline-flex items-center gap-1.5 text-sm text-finrise-text">
-                            <Calendar
-                              size={14}
-                              className="text-finrise-muted"
-                            />
-                            {pkg.days_per_list} Gün
-                          </div>
-                        </td>
-                        <td className="p-4">
                           <div
                             className={cn(
-                              "flex items-center gap-1.5 text-sm font-medium",
+                              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium",
                               pkg.weight_change_per_list < 0
-                                ? "text-emerald-500"
+                                ? "bg-emerald-500/10 text-emerald-400"
                                 : pkg.weight_change_per_list > 0
-                                ? "text-red-500"
-                                : "text-finrise-muted"
+                                ? "bg-red-500/10 text-red-400"
+                                : "bg-finrise-input text-finrise-muted"
                             )}
                           >
-                            <Scale size={16} />
+                            <TrendingDown size={14} className={pkg.weight_change_per_list >= 0 ? "rotate-180" : ""} />
                             {pkg.weight_change_per_list > 0 ? "+" : ""}
-                            {pkg.weight_change_per_list} kg/liste
+                            {pkg.weight_change_per_list} kg
                           </div>
                         </td>
-                        <td className="p-4">
-                          <div className="text-sm space-y-1">
-                            <div className="text-finrise-text">
-                              {totalDays} Gün
-                            </div>
-                            <div
+                        <td className="p-4 text-center">
+                          <div className="inline-flex flex-col items-center gap-0.5">
+                            <span className="text-sm font-bold text-finrise-text">{totalDays} gün</span>
+                            <span
                               className={cn(
                                 "text-xs font-medium",
                                 totalWeight < 0
-                                  ? "text-emerald-500"
+                                  ? "text-emerald-400"
                                   : totalWeight > 0
-                                  ? "text-red-500"
+                                  ? "text-red-400"
                                   : "text-finrise-muted"
                               )}
                             >
                               {totalWeight > 0 ? "+" : ""}
                               {totalWeight} kg hedef
-                            </div>
+                            </span>
                           </div>
                         </td>
                         <td className="p-4 text-center">
-                          <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => handleOpenModal(pkg)}
-                              className="p-1.5 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
+                              className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
                             >
                               <Edit2 size={16} />
                             </button>
                             <button
                               onClick={() => handleDelete(pkg.id)}
-                              className="p-1.5 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                              className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                             >
                               <Trash2 size={16} />
                             </button>

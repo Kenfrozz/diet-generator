@@ -47,27 +47,28 @@
   }
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar - Theme Compatible */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #21252b;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #4b5263;
-  border-radius: 4px;
+  background: var(--text-muted);
+  border-radius: 3px;
+  opacity: 0.5;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #5c6370;
+  background: var(--color-accent);
 }
 
 /* Utility to hide number input spinners */
-.no-spinner::-webkit-inner-spin-button, 
-.no-spinner::-webkit-outer-spin-button { 
-  -webkit-appearance: none !important; 
-  margin: 0 !important; 
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
 }
 .no-spinner {
   -moz-appearance: textfield !important;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Save, Package, Copy } from 'lucide-react';
+import { X, Save, Package, Copy, Sun, Snowflake, Coffee, Sandwich, Utensils, Apple, Moon, Milk, GlassWater, UtensilsCrossed, Pencil } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const API_URL = 'http://127.0.0.1:8000';
@@ -20,7 +20,7 @@ export function RecipeModal({ isOpen, onClose, onSave, recipe }) {
     bki_26_29: '',
     bki_30_33: '',
     bki_34_plus: '',
-    seasons: 'yaz,kis',
+    seasons: '',
     package_ids: []
   });
 
@@ -52,7 +52,7 @@ export function RecipeModal({ isOpen, onClose, onSave, recipe }) {
         bki_26_29: '',
         bki_30_33: '',
         bki_34_plus: '',
-        seasons: 'yaz,kis',
+        seasons: '',
         package_ids: []
       });
     }
@@ -169,176 +169,181 @@ export function RecipeModal({ isOpen, onClose, onSave, recipe }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl w-full max-w-4xl shadow-2xl scale-100 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-finrise-panel border border-finrise-border rounded-2xl w-full max-w-3xl shadow-2xl animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-hidden flex flex-col">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/5 shrink-0">
-          <h2 className="text-xl font-bold text-white">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-finrise-border bg-finrise-input/30">
+          <h2 className="text-lg font-semibold text-finrise-text flex items-center gap-2">
+            {recipe ? <Pencil size={18} className="text-finrise-accent" /> : <UtensilsCrossed size={18} className="text-finrise-accent" />}
             {recipe ? 'Tarifi Düzenle' : 'Yeni Tarif Ekle'}
           </h2>
           <button 
             onClick={onClose}
-            className="p-2 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition-colors"
+            className="p-2 hover:bg-finrise-input rounded-lg text-finrise-muted hover:text-finrise-text transition-colors"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-400">Tarif Adı</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500/50 transition-all"
-                placeholder="Örn: Avokado Salatası"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-400">Öğün Tipi</label>
-              <select
-                value={formData.meal_type}
-                onChange={(e) => setFormData({ ...formData, meal_type: e.target.value })}
-                className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500/50 transition-all"
-              >
-                <option value="kahvalti">Kahvaltı</option>
-                <option value="ara_ogun_1">Ara Öğün 1</option>
-                <option value="ogle">Öğle Yemeği</option>
-                <option value="ara_ogun_2">Ara Öğün 2</option>
-                <option value="aksam">Akşam Yemeği</option>
-                <option value="ara_ogun_3">Ara Öğün 3</option>
-                <option value="ozel_icecek">Özel İçecek</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Mevsim Seçimi */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-400">Geçerli Mevsimler</label>
-            <div className="flex gap-4">
-               <label className={cn(
-                  "flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all",
-                  formData.seasons.includes('yaz') 
-                    ? "bg-yellow-500/20 border-yellow-500/50 text-yellow-300" 
-                    : "bg-black/20 border-white/10 text-gray-400 hover:border-white/20"
-               )}>
-                  <input 
-                    type="checkbox" 
-                    className="hidden"
-                    checked={formData.seasons.includes('yaz')}
-                    onChange={() => toggleSeason('yaz')}
-                  />
-                  <span>☀️ Yaz</span>
-               </label>
-               
-               <label className={cn(
-                  "flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all",
-                  formData.seasons.includes('kis') 
-                    ? "bg-blue-500/20 border-blue-500/50 text-blue-300" 
-                    : "bg-black/20 border-white/10 text-gray-400 hover:border-white/20"
-               )}>
-                  <input 
-                    type="checkbox" 
-                    className="hidden"
-                    checked={formData.seasons.includes('kis')}
-                    onChange={() => toggleSeason('kis')}
-                  />
-                  <span>❄️ Kış</span>
-               </label>
-            </div>
-          </div>
-
-          {/* BKİ Gruplarına Göre İçerikler */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-400">BKİ Gruplarına Göre İçerikler</label>
-              <button
-                type="button"
-                onClick={copyToAll}
-                className="text-xs flex items-center gap-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-              >
-                <Copy size={12} />
-                İlkini Boşlara Kopyala
-              </button>
-            </div>
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-5">
             
-            <div className="grid grid-cols-2 gap-3">
-              {BKI_GROUPS.map((group) => (
-                <div key={group.key} className="space-y-1">
-                  <label className={cn("text-xs font-medium", getLabelColor(group.color))}>
-                    {group.label}
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={formData[group.key]}
-                    onChange={(e) => setFormData({ ...formData, [group.key]: e.target.value })}
-                    className={cn(
-                      "w-full bg-black/20 border rounded-lg px-3 py-2 text-white text-sm focus:outline-none transition-all resize-none",
-                      getBorderColor(group.color)
-                    )}
-                    placeholder={group.key === 'bki_21_25' ? 'Tarif içeriği (zorunlu)' : 'Boş bırakılırsa ilkinden kopyalanır'}
-                    required={group.key === 'bki_21_25'}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
+            {/* Üst Bölüm - Temel Bilgiler */}
+            <div className="bg-finrise-input/30 rounded-xl p-4 space-y-4">
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="flex-1 bg-finrise-panel border border-finrise-border rounded-lg px-4 py-2.5 text-finrise-text focus:outline-none focus:border-finrise-accent focus:ring-1 focus:ring-finrise-accent/20 transition-all"
+                  placeholder="Tarif adı girin..."
+                />
+                
+                <select
+                  value={formData.meal_type}
+                  onChange={(e) => setFormData({ ...formData, meal_type: e.target.value })}
+                  className="bg-finrise-panel border border-finrise-border rounded-lg px-3 py-2.5 text-finrise-text text-sm focus:outline-none focus:border-finrise-accent transition-all"
+                >
+                  <option value="kahvalti">Kahvaltı</option>
+                  <option value="ara_ogun_1">Ara Öğün 1</option>
+                  <option value="ogle">Öğle</option>
+                  <option value="ara_ogun_2">Ara Öğün 2</option>
+                  <option value="aksam">Akşam</option>
+                  <option value="ara_ogun_3">Ara Öğün 3</option>
+                  <option value="ozel_icecek">İçecek</option>
+                </select>
 
-          {/* Paket Seçimi */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-400 flex items-center gap-2">
-              <Package size={16} />
-              Dahil Olacağı Paketler
-            </label>
-            {packages.length === 0 ? (
-              <p className="text-sm text-gray-500 italic p-3 bg-black/20 rounded-lg border border-white/10">
-                Henüz paket oluşturulmamış.
-              </p>
-            ) : (
-              <div className="grid grid-cols-3 gap-2 max-h-24 overflow-y-auto p-1">
-                {packages.map(pkg => (
-                  <label 
-                    key={pkg.id} 
+                {/* Mevsim */}
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleSeason('yaz')}
                     className={cn(
-                      "flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all text-sm",
-                      formData.package_ids.includes(pkg.id)
-                        ? "bg-purple-500/20 border-purple-500/50 text-purple-300"
-                        : "bg-black/20 border-white/10 text-white hover:border-white/20"
+                      "p-2.5 rounded-lg border transition-all",
+                      formData.seasons.includes('yaz') 
+                        ? "bg-amber-500/20 border-amber-500/50 text-amber-400" 
+                        : "bg-finrise-panel border-finrise-border text-finrise-muted hover:text-finrise-text"
+                    )}
+                    title="Yaz"
+                  >
+                    <Sun size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSeason('kis')}
+                    className={cn(
+                      "p-2.5 rounded-lg border transition-all",
+                      formData.seasons.includes('kis') 
+                        ? "bg-sky-500/20 border-sky-500/50 text-sky-400" 
+                        : "bg-finrise-panel border-finrise-border text-finrise-muted hover:text-finrise-text"
+                    )}
+                    title="Kış"
+                  >
+                    <Snowflake size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* BKİ İçerikleri */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-finrise-text">BKİ Gruplarına Göre İçerikler</h3>
+                <button
+                  type="button"
+                  onClick={copyToAll}
+                  className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-finrise-accent/10 hover:bg-finrise-accent/20 text-finrise-accent transition-colors"
+                >
+                  <Copy size={12} />
+                  Boşlara Kopyala
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                {BKI_GROUPS.map((group) => (
+                  <div 
+                    key={group.key} 
+                    className={cn(
+                      "rounded-lg border-l-2 bg-finrise-input/30 p-2.5",
+                      group.color === 'emerald' && 'border-l-emerald-500',
+                      group.color === 'yellow' && 'border-l-yellow-500',
+                      group.color === 'orange' && 'border-l-orange-500',
+                      group.color === 'red' && 'border-l-red-500'
                     )}
                   >
-                    <input 
-                      type="checkbox" 
-                      checked={formData.package_ids.includes(pkg.id)}
-                      onChange={() => togglePackage(pkg.id)}
-                      className="accent-purple-500 w-4 h-4"
+                    <label className={cn("text-xs font-medium mb-1.5 block", getLabelColor(group.color))}>
+                      {group.label}
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={formData[group.key]}
+                      onChange={(e) => setFormData({ ...formData, [group.key]: e.target.value })}
+                      className="w-full bg-finrise-panel border border-finrise-border rounded-lg px-3 py-2 text-finrise-text text-sm focus:outline-none focus:border-finrise-accent transition-all resize-none"
+                      placeholder={group.key === 'bki_21_25' ? 'İçerik girin (zorunlu)' : 'Opsiyonel'}
+                      required={group.key === 'bki_21_25'}
                     />
-                    <span className="truncate">{pkg.name}</span>
-                  </label>
+                  </div>
                 ))}
               </div>
-            )}
+            </div>
+
+            {/* Paket Seçimi */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-finrise-text flex items-center gap-2">
+                  <Package size={14} className="text-finrise-accent" />
+                  Paketler
+                  {formData.package_ids.length > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-finrise-accent/20 text-finrise-accent">
+                      {formData.package_ids.length} seçili
+                    </span>
+                  )}
+                </h3>
+              </div>
+              
+              {packages.length === 0 ? (
+                <p className="text-sm text-finrise-muted italic py-4 text-center">
+                  Henüz paket oluşturulmamış
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2 p-3 bg-finrise-input/30 rounded-xl">
+                  {packages.map(pkg => (
+                    <button
+                      key={pkg.id}
+                      type="button"
+                      onClick={() => togglePackage(pkg.id)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                        formData.package_ids.includes(pkg.id)
+                          ? "bg-finrise-accent text-white shadow-md shadow-finrise-accent/20"
+                          : "bg-finrise-panel border border-finrise-border text-finrise-muted hover:text-finrise-text hover:border-finrise-accent/50"
+                      )}
+                    >
+                      {pkg.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3">
+          {/* Footer */}
+          <div className="flex justify-end gap-3 px-6 py-4 border-t border-finrise-border bg-finrise-input/20">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-colors font-medium"
+              className="px-5 py-2.5 rounded-xl text-finrise-muted hover:text-finrise-text hover:bg-finrise-input transition-colors font-medium"
             >
               İptal
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium shadow-lg shadow-purple-900/20 transition-all hover:scale-[1.02]"
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-finrise-accent hover:bg-finrise-accent/90 text-white font-medium shadow-lg shadow-finrise-accent/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
-              <Save size={18} />
+              <Save size={16} />
               {recipe ? 'Kaydet' : 'Oluştur'}
             </button>
           </div>

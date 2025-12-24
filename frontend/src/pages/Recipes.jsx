@@ -189,88 +189,118 @@ export default function Recipes() {
       </div>
 
       <div className="bg-finrise-panel border border-finrise-border rounded-2xl overflow-hidden shadow-xl">
-        <table className="w-full text-left">
-            <thead className="bg-finrise-input/50 text-finrise-muted font-medium border-b border-finrise-border">
-                <tr>
-                    <th className="p-4 pl-6">Tarif Adı</th>
-                    <th className="p-4">Öğün Tipi</th>
-                    <th className="p-4">Mevsim</th>
-                    <th className="p-4">Paketler</th>
-                    <th className="p-4 text-right pr-6">İşlemler</th>
-                </tr>
-            </thead>
-            <tbody className="divide-y divide-finrise-border">
-                {loading ? (
-                    <tr>
-                        <td colSpan="4" className="p-8 text-center text-finrise-muted">Yükleniyor...</td>
-                    </tr>
-                ) : filteredRecipes.length === 0 ? (
-                    <tr>
-                        <td colSpan="4" className="p-8 text-center text-finrise-muted">Tarif bulunamadı.</td>
-                    </tr>
-                ) : (
-                    filteredRecipes.map((recipe) => {
-                        const pkgs = recipePackagesMap[recipe.id] || [];
-                        return (
-                            <tr key={recipe.id} className="hover:bg-finrise-input/30 transition-colors group">
-                                <td className="p-4 pl-6 font-medium text-finrise-text">{recipe.name}</td>
-                                <td className="p-4 text-finrise-text/80">
-                                    <span className="px-2 py-1 rounded-md text-xs font-medium bg-finrise-accent/10 text-finrise-accent border border-finrise-accent/20">
-                                        {getMealTypeLabel(recipe.meal_type)}
-                                    </span>
-                                </td>
-                                <td className="p-4">
-                                    <div className="flex gap-1">
-                                      {(recipe.seasons || 'yaz,kis').split(',').map(s => (
-                                        <span key={s} className="text-lg" title={s === 'yaz' ? 'Yaz' : 'Kış'}>
-                                          {s === 'yaz' ? '☀️' : '❄️'}
-                                        </span>
-                                      ))}
-                                    </div>
-                                </td>
-                                <td className="p-4">
-                                    {pkgs.length === 0 ? (
-                                        <span className="text-finrise-muted text-sm italic">Paket atanmamış</span>
-                                    ) : (
-                                        <div className="flex flex-wrap gap-1">
-                                            {pkgs.slice(0, 3).map(pkg => (
-                                                <span 
-                                                    key={pkg.id}
-                                                    className="px-2 py-0.5 rounded-md text-xs font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20"
-                                                >
-                                                    {pkg.name}
-                                                </span>
-                                            ))}
-                                            {pkgs.length > 3 && (
-                                                <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-finrise-input text-finrise-muted">
-                                                    +{pkgs.length - 3}
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="p-4 text-right pr-6">
-                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button 
-                                          onClick={() => openEditModal(recipe)}
-                                          className="p-2 hover:bg-finrise-accent hover:text-white rounded-lg transition-colors text-finrise-muted"
-                                        >
-                                            <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button 
-                                          onClick={() => handleDelete(recipe.id)}
-                                          className="p-2 hover:bg-finrise-red hover:text-white rounded-lg transition-colors text-finrise-muted"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        );
-                    })
-                )}
-            </tbody>
-        </table>
+        <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
+          <table className="w-full text-left">
+              <thead className="bg-finrise-input/50 text-finrise-muted font-medium border-b border-finrise-border sticky top-0 z-10">
+                  <tr>
+                      <th className="p-4 pl-6">Tarif Adı</th>
+                      <th className="p-4 text-center">Öğün</th>
+                      <th className="p-4 text-center">Mevsim</th>
+                      <th className="p-4">Paketler</th>
+                      <th className="p-4 text-center w-24">İşlemler</th>
+                  </tr>
+              </thead>
+              <tbody className="divide-y divide-finrise-border">
+                  {loading ? (
+                      <tr>
+                          <td colSpan="5" className="p-8 text-center text-finrise-muted">Yükleniyor...</td>
+                      </tr>
+                  ) : filteredRecipes.length === 0 ? (
+                      <tr>
+                          <td colSpan="5" className="p-8 text-center text-finrise-muted">Tarif bulunamadı.</td>
+                      </tr>
+                  ) : (
+                      filteredRecipes.map((recipe) => {
+                          const pkgs = recipePackagesMap[recipe.id] || [];
+                          const seasons = (recipe.seasons || '').split(',').filter(Boolean);
+                          return (
+                              <tr key={recipe.id} className="hover:bg-finrise-input/30 transition-colors group">
+                                  <td className="p-4 pl-6">
+                                      <div className="flex items-center gap-3">
+                                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 text-violet-500 flex items-center justify-center shrink-0 shadow-sm">
+                                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                                                  <path d="M7 2v20"/>
+                                                  <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                                              </svg>
+                                          </div>
+                                          <span className="font-semibold text-finrise-text">{recipe.name}</span>
+                                      </div>
+                                  </td>
+                                  <td className="p-4 text-center">
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-finrise-accent/10 text-finrise-accent">
+                                          {getMealTypeLabel(recipe.meal_type)}
+                                      </span>
+                                  </td>
+                                  <td className="p-4 text-center">
+                                      <div className="flex justify-center gap-1">
+                                        {seasons.length === 0 ? (
+                                          <span className="text-finrise-muted text-xs">-</span>
+                                        ) : (
+                                          seasons.map(s => (
+                                            <span 
+                                              key={s} 
+                                              className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                                                s === 'yaz' 
+                                                  ? 'bg-amber-500/10 text-amber-400' 
+                                                  : 'bg-sky-500/10 text-sky-400'
+                                              }`}
+                                              title={s === 'yaz' ? 'Yaz' : 'Kış'}
+                                            >
+                                              {s === 'yaz' ? (
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                                              ) : (
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12h5M17 12h5M8 8l-2-2M18 18l-2-2M8 16l-2 2M18 6l-2 2M12 2v5M12 17v5"/></svg>
+                                              )}
+                                            </span>
+                                          ))
+                                        )}
+                                      </div>
+                                  </td>
+                                  <td className="p-4">
+                                      {pkgs.length === 0 ? (
+                                          <span className="text-finrise-muted text-xs italic">Atanmamış</span>
+                                      ) : (
+                                          <div className="flex flex-wrap gap-1">
+                                              {pkgs.slice(0, 2).map(pkg => (
+                                                  <span 
+                                                      key={pkg.id}
+                                                      className="px-2 py-1 rounded-lg text-xs font-medium bg-orange-500/10 text-orange-400"
+                                                  >
+                                                      {pkg.name}
+                                                  </span>
+                                              ))}
+                                              {pkgs.length > 2 && (
+                                                  <span className="px-2 py-1 rounded-lg text-xs font-medium bg-finrise-input text-finrise-muted">
+                                                      +{pkgs.length - 2}
+                                                  </span>
+                                              )}
+                                          </div>
+                                      )}
+                                  </td>
+                                  <td className="p-4 text-center">
+                                      <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <button 
+                                            onClick={() => openEditModal(recipe)}
+                                            className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
+                                          >
+                                              <Edit className="w-4 h-4" />
+                                          </button>
+                                          <button 
+                                            onClick={() => handleDelete(recipe.id)}
+                                            className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                                          >
+                                              <Trash2 className="w-4 h-4" />
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+                          );
+                      })
+                  )}
+              </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Recipe Modal */}

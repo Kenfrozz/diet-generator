@@ -1,23 +1,15 @@
-import { motion } from 'framer-motion';
-import { Construction } from 'lucide-react';
+import React from 'react';
 
-export default function Dashboard() {
-  return (
-    <div className="flex flex-col items-center justify-center h-[70vh] text-center">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-        className="bg-finrise-panel border border-finrise-border p-8 rounded-2xl shadow-xl max-w-md w-full flex flex-col items-center"
-      >
-        <div className="w-16 h-16 bg-finrise-accent/10 rounded-full flex items-center justify-center mb-6 text-finrise-accent">
-           <Construction size={32} />
+const Dashboard = () => {
+    return (
+        <div className="flex flex-col items-center justify-center h-full w-full text-finrise-text-secondary">
+            <div className="text-center space-y-4">
+                <div className="text-6xl">🚧</div>
+                <h1 className="text-2xl font-medium">Bu özellik yakında eklenecek</h1>
+                <p className="text-sm opacity-60">Genel bakış modülü geliştirme aşamasındadır.</p>
+            </div>
         </div>
-        <h1 className="text-2xl font-bold text-white mb-2">Yakında Eklenecek</h1>
-        <p className="text-finrise-muted">
-          Dashboard ekranı güncelleniyor. Çok yakında yeni özelliklerle burada olacak.
-        </p>
-      </motion.div>
-    </div>
-  );
-}
+    );
+};
+
+export default Dashboard;

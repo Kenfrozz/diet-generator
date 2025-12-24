@@ -21,8 +21,13 @@ const APPOINTMENT_TYPES = [
   { name: 'Ön görüşme', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
   { name: 'Ölçüm', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
   { name: 'Andulasyon', color: 'bg-orange-500/10 text-orange-500 border-orange-500/20' },
-  { name: 'Spor salonu ön görüşmesi', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' }
+  { name: 'Spor Salonu', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' }
 ];
+
+// Map old names to new names for existing database entries
+const NAME_MAPPING = {
+  'Spor salonu ön görüşmesi': 'Spor Salonu'
+};
 
 const API_URL = 'http://127.0.0.1:8000';
 
@@ -272,119 +277,119 @@ export default function Appointments() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 px-6 pb-6 overflow-hidden">
+      <div className="flex-1 px-6 pb-6 overflow-hidden min-h-0">
         <div className="bg-finrise-panel border border-finrise-border rounded-2xl overflow-hidden h-full flex flex-col">
-            <div className="overflow-auto flex-1 custom-scrollbar">
+            <div className="overflow-y-auto flex-1">
                 <table className="w-full text-left">
                     <thead className="bg-finrise-input/50 sticky top-0 z-10">
                         <tr>
                             <th className="px-4 py-3 text-xs font-semibold text-finrise-muted uppercase tracking-wider">Danışan</th>
-                            <th className="px-4 py-3 text-xs font-semibold text-finrise-muted uppercase tracking-wider">Tarih</th>
+                            <th className="px-4 py-3 text-xs font-semibold text-finrise-muted uppercase tracking-wider text-center">Tarih</th>
                             <th className="px-4 py-3 text-xs font-semibold text-finrise-muted uppercase tracking-wider">Hizmetler</th>
-                            <th className="px-4 py-3 text-xs font-semibold text-finrise-muted uppercase tracking-wider text-right">İşlemler</th>
+                            <th className="px-4 py-3 text-xs font-semibold text-finrise-muted uppercase tracking-wider text-center w-28">İşlemler</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-finrise-border/50">
                         {filteredAppointments.length === 0 ? (
                             <tr>
-                                <td colSpan="5" className="px-4 py-12 text-center text-finrise-muted">
+                                <td colSpan="4" className="px-4 py-12 text-center text-finrise-muted">
                                     <CalendarClock size={32} className="mx-auto mb-2 opacity-30" />
                                     <p>Randevu bulunamadı.</p>
                                 </td>
                             </tr>
                         ) : (
-                            currentAppointments.map((app, idx) => {
+                            currentAppointments.map((app) => {
                                 const isPast = new Date(app.date + 'T' + app.time) < new Date();
                                 return (
                                 <tr 
                                     key={app.id} 
                                     className={cn(
                                         "group transition-colors hover:bg-finrise-input/30",
-                                        idx !== currentAppointments.length - 1 && "border-b border-finrise-border/50",
-                                        isPast && "opacity-60 bg-finrise-input/10 grayscale-[0.5]"
+                                        isPast && "opacity-50"
                                     )}
                                 >
                                     {/* Client */}
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-full bg-finrise-accent/10 flex items-center justify-center shrink-0">
-                                                <User size={16} className="text-finrise-accent" />
+                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-finrise-accent/20 to-pink-500/10 flex items-center justify-center shrink-0 shadow-sm">
+                                                <User size={18} className="text-finrise-accent" />
                                             </div>
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="font-medium text-finrise-text truncate">{app.clientName}</div>
+                                                    <span className="font-semibold text-finrise-text truncate">{app.clientName}</span>
                                                     {app.note && (
                                                         <button 
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 setViewingNote({ text: app.note, client: app.clientName });
                                                             }}
-                                                            className="flex items-center justify-center w-5 h-5 rounded-full bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-white transition-all shadow-sm"
-                                                            title="Notu var"
+                                                            className="flex items-center justify-center w-5 h-5 rounded-full bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-white transition-all"
+                                                            title="Notu görüntüle"
                                                         >
-                                                            <StickyNote size={10} className="fill-current" />
+                                                            <StickyNote size={10} />
                                                         </button>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className="text-xs text-finrise-muted truncate">{app.phone || '-'}</span>
-                                                </div>
+                                                <div className="text-xs text-finrise-muted truncate">{app.phone || '-'}</div>
                                             </div>
                                         </div>
                                     </td>
                                     
                                     {/* Date & Time */}
-                                    <td className="px-4 py-3">
-                                        <div className="text-sm font-medium text-finrise-text">
-                                            {new Date(app.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                                    <td className="px-4 py-3 text-center">
+                                        <div className="inline-flex flex-col items-center gap-0.5">
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-500/10 text-blue-400 text-sm font-medium">
+                                                <Clock size={12} />
+                                                {app.time}
+                                            </span>
+                                            <span className="text-xs text-finrise-muted">
+                                                {new Date(app.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', weekday: 'short' })}
+                                            </span>
                                         </div>
-                                        <div className="text-xs text-finrise-muted">{app.time}</div>
                                     </td>
                                     
                                     {/* Services */}
                                     <td className="px-4 py-3">
                                         <div className="flex flex-wrap gap-1">
                                             {app.types && app.types.length > 0 ? app.types.map(t => {
-                                                const typeDef = APPOINTMENT_TYPES.find(def => def.name === t);
-                                                const colorClass = typeDef ? typeDef.color : 'bg-finrise-accent/10 text-finrise-accent border-finrise-accent/20';
+                                                const displayName = NAME_MAPPING[t] || t;
+                                                const typeDef = APPOINTMENT_TYPES.find(def => def.name === displayName || def.name === t);
+                                                const colorClass = typeDef ? typeDef.color : 'bg-finrise-accent/10 text-finrise-accent';
                                                 return (
-                                                    <span key={t} className={cn("text-[11px] px-2 py-0.5 rounded border font-medium", colorClass)}>
-                                                        {t}
+                                                    <span key={t} className={cn("text-xs px-2 py-1 rounded-lg font-medium", colorClass)}>
+                                                        {displayName}
                                                     </span>
                                                 );
-                                            }) : <span className="text-xs text-finrise-muted">-</span>}
+                                            }) : <span className="text-xs text-finrise-muted italic">-</span>}
                                         </div>
                                     </td>
                                     
-                                    {/* Actions Only */}
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <div className="flex items-center gap-1 transition-opacity">
-                                                {app.phone && (
-                                                    <button 
-                                                        onClick={() => openWhatsapp(app.phone)}
-                                                        className="p-1.5 rounded-lg text-green-500 hover:bg-green-500/10 transition-colors"
-                                                        title="WhatsApp"
-                                                    >
-                                                        <MessageCircle size={16} />
-                                                    </button>
-                                                )}
-
+                                    {/* Actions */}
+                                    <td className="px-4 py-3 text-center">
+                                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {app.phone && (
                                                 <button 
-                                                    onClick={() => handleOpenModal(app)}
-                                                    className="p-1.5 text-finrise-muted hover:text-finrise-accent hover:bg-finrise-input rounded-lg transition-colors"
-                                                    title="Düzenle"
+                                                    onClick={() => openWhatsapp(app.phone)}
+                                                    className="p-2 rounded-lg text-green-400 hover:bg-green-500/10 transition-colors"
+                                                    title="WhatsApp"
                                                 >
-                                                    <Edit2 size={16} />
+                                                    <MessageCircle size={16} />
                                                 </button>
-                                                <button 
-                                                    onClick={() => handleDelete(app.id)}
-                                                    className="p-1.5 text-finrise-muted hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                                                    title="Sil"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
+                                            )}
+                                            <button 
+                                                onClick={() => handleOpenModal(app)}
+                                                className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
+                                                title="Düzenle"
+                                            >
+                                                <Edit2 size={16} />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDelete(app.id)}
+                                                className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                                                title="Sil"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
