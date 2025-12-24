@@ -194,6 +194,7 @@ export default function Recipes() {
                 <tr>
                     <th className="p-4 pl-6">Tarif Adı</th>
                     <th className="p-4">Öğün Tipi</th>
+                    <th className="p-4">Mevsim</th>
                     <th className="p-4">Paketler</th>
                     <th className="p-4 text-right pr-6">İşlemler</th>
                 </tr>
@@ -217,6 +218,15 @@ export default function Recipes() {
                                     <span className="px-2 py-1 rounded-md text-xs font-medium bg-finrise-accent/10 text-finrise-accent border border-finrise-accent/20">
                                         {getMealTypeLabel(recipe.meal_type)}
                                     </span>
+                                </td>
+                                <td className="p-4">
+                                    <div className="flex gap-1">
+                                      {(recipe.seasons || 'yaz,kis').split(',').map(s => (
+                                        <span key={s} className="text-lg" title={s === 'yaz' ? 'Yaz' : 'Kış'}>
+                                          {s === 'yaz' ? '☀️' : '❄️'}
+                                        </span>
+                                      ))}
+                                    </div>
                                 </td>
                                 <td className="p-4">
                                     {pkgs.length === 0 ? (

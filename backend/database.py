@@ -48,47 +48,13 @@ def save_season_config(summer_start: str, summer_end: str):
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f, ensure_ascii=False, indent=2)
 
-def get_current_season() -> str:
-    """Tarihe göre aktif mevsimi döndür (yaz veya kis)."""
-    config = get_season_config()
-    start_str = config.get("summer_start", "04-01")
-    end_str = config.get("summer_end", "10-01")
-    
-    try:
-        today = datetime.now()
-        # Yıl önemli değil, ay ve gün karşılaştıracağız
-        # Tarih formatı: MM-DD
-        s_month, s_day = map(int, start_str.split('-'))
-        e_month, e_day = map(int, end_str.split('-'))
-        
-        # Mevcut tarih için yıl kullan, sınırlar için o yılı kullan
-        current_date = datetime(today.year, today.month, today.day)
-        start_date = datetime(today.year, s_month, s_day)
-        end_date = datetime(today.year, e_month, e_day)
-        
-        # Eğer bitiş başlangıçtan küçükse (örn: kış dönemi yıl atlıyorsa) - ama burada YAZ dönemi genelde aynı yıl içindedir.
-        # Yaz dönemi: Başlangıç -> Bitiş arası.
-        
-        if start_date <= current_date < end_date:
-            return "yaz"
-        else:
-            return "kis"
-            
-    except Exception as e:
-        print(f"Season calculation error: {e}")
-        return "yaz"
-
-# set_current_season artık kullanılmıyor (otomatik hesaplanıyor) ama geriye uyumluluk için dummy bırakabiliriz veya silebiliriz.
-# API tarafında hatayı önlemek için boş bırakıyorum.
-def set_current_season(season: str):
-    pass
 
 
-def get_season_db_path(season: str = None) -> str:
-    """Mevsime göre veritabanı yolunu döndür."""
-    if season is None:
-        season = get_current_season()
-    return os.path.join(get_data_dir(), f"detoksbot_{season}.db")
+
+
+def get_db_path() -> str:
+    """Ana veritabanı yolunu döndür."""
+    return os.path.join(get_data_dir(), "detoksbot.db")
 
 
 class Database:
@@ -97,10 +63,20 @@ class Database:
     def __init__(self, db_path: str = None):
         """Veritabanı bağlantısını başlat."""
         if db_path is None:
-            db_path = get_season_db_path()
+            db_path = get_db_path()
         
         self.db_path = db_path
         self.conn = None
+    
+    def __enter__(self):
+        """Context manager girişi - bağlantı aç."""
+        self.connect()
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager çıkışı - bağlantı kapat."""
+        self.close()
+        return False
     
     def connect(self):
         """Veritabanına bağlan."""
@@ -166,6 +142,7 @@ class Database:
                 name TEXT NOT NULL,
                 meal_type TEXT NOT NULL,
                 pool_type TEXT,
+                seasons TEXT DEFAULT 'yaz,kis',
                 bki_21_25 TEXT NOT NULL,
                 bki_26_29 TEXT NOT NULL,
                 bki_30_33 TEXT NOT NULL,
@@ -173,6 +150,14 @@ class Database:
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        # Migrasyon: seasons sütunu yoksa ekle
+        try:
+            cursor.execute("SELECT seasons FROM recipes LIMIT 1")
+        except sqlite3.OperationalError:
+            print("Migrating database: Adding seasons column...")
+            cursor.execute("ALTER TABLE recipes ADD COLUMN seasons TEXT DEFAULT 'yaz,kis'")
+            conn.commit()
         
         # Diyet kalıpları tablosu
         cursor.execute("""
@@ -340,15 +325,16 @@ class Database:
     # ==================== TARİF İŞLEMLERİ ====================
     
     def add_recipe(self, name: str, meal_type: str, pool_type: str,
-                   bki_21_25: str, bki_26_29: str, bki_30_33: str, bki_34_plus: str) -> int:
+                   bki_21_25: str, bki_26_29: str, bki_30_33: str, bki_34_plus: str,
+                   seasons: str = "yaz,kis") -> int:
         """Yeni tarif ekle."""
         conn = self.connect()
         cursor = conn.cursor()
         
         cursor.execute("""
-            INSERT INTO recipes (name, meal_type, pool_type, bki_21_25, bki_26_29, bki_30_33, bki_34_plus)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (name, meal_type, pool_type, bki_21_25, bki_26_29, bki_30_33, bki_34_plus))
+            INSERT INTO recipes (name, meal_type, pool_type, seasons, bki_21_25, bki_26_29, bki_30_33, bki_34_plus)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (name, meal_type, pool_type, seasons, bki_21_25, bki_26_29, bki_30_33, bki_34_plus))
         
         recipe_id = cursor.lastrowid
         conn.commit()
@@ -356,17 +342,18 @@ class Database:
         return recipe_id
     
     def update_recipe(self, recipe_id: int, name: str, meal_type: str, pool_type: str,
-                      bki_21_25: str, bki_26_29: str, bki_30_33: str, bki_34_plus: str):
+                      bki_21_25: str, bki_26_29: str, bki_30_33: str, bki_34_plus: str,
+                      seasons: str = "yaz,kis"):
         """Mevcut tarifi güncelle."""
         conn = self.connect()
         cursor = conn.cursor()
         
         cursor.execute("""
             UPDATE recipes 
-            SET name = ?, meal_type = ?, pool_type = ?, 
+            SET name = ?, meal_type = ?, pool_type = ?, seasons = ?, 
                 bki_21_25 = ?, bki_26_29 = ?, bki_30_33 = ?, bki_34_plus = ?
             WHERE id = ?
-        """, (name, meal_type, pool_type, bki_21_25, bki_26_29, bki_30_33, bki_34_plus, recipe_id))
+        """, (name, meal_type, pool_type, seasons, bki_21_25, bki_26_29, bki_30_33, bki_34_plus, recipe_id))
         
         conn.commit()
         self.close()
@@ -1132,15 +1119,27 @@ class Database:
         return [dict(row) for row in rows]
     
     def get_recipes_for_diet_by_package(self, package_id: int, meal_type: str, 
-                                         exclude_keywords: list = None) -> list:
+                                         exclude_keywords: list = None,
+                                         season_filter: str = None) -> list:
         """Diyet oluşturmak için pakete ait tarifleri getir (hariç tutma filtresi ile)."""
         recipes = self.get_recipes_by_package(package_id, meal_type)
         
-        # Hariç tutma filtresi uygula
-        if exclude_keywords:
-            filtered_recipes = []
-            for recipe in recipes:
-                exclude = False
+        filtered_recipes = []
+        for recipe in recipes:
+            # 1. Mevsim Filtresi
+            if season_filter:
+                # Tarifin sezon bilgisi (varsayılan: yaz,kis)
+                # Not: DB'den gelen row objesi olduğu için dict gibi davranmayabilir ama row_factory=Row
+                recipe_seasons = recipe['seasons'] if 'seasons' in recipe.keys() else 'yaz,kis'
+                if recipe_seasons is None: recipe_seasons = 'yaz,kis'
+                
+                # Eğer aranan mevsim tarifin sezonlarında yoksa atla
+                if season_filter not in recipe_seasons.split(','):
+                    continue
+                    
+            # 2. Yasaklı Kelime Filtresi
+            exclude = False
+            if exclude_keywords:
                 for keyword in exclude_keywords:
                     keyword_lower = keyword.lower().strip()
                     if keyword_lower:
@@ -1155,11 +1154,11 @@ class Database:
                         if keyword_lower in all_content:
                             exclude = True
                             break
-                if not exclude:
-                    filtered_recipes.append(recipe)
-            recipes = filtered_recipes
+            
+            if not exclude:
+                filtered_recipes.append(recipe)
         
-        return recipes
+        return filtered_recipes
 
     # --- Appointment Methods ---
     

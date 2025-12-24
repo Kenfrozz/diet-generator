@@ -257,34 +257,58 @@ export default function Settings() {
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                    {[
-                        { label: 'Vurgu Rengi', key: '--color-accent', default: '#e91d7c' },
-                        { label: 'Arkaplan', key: '--bg-app', default: '#0f172a' },
-                        { label: 'Panel', key: '--bg-panel', default: '#282c34' },
-                        { label: 'Kenar Çubuğu', key: '--bg-sidebar', default: '#2c313c' },
-                        { label: 'Metin Rengi', key: '--text-main', default: '#abb2bf' },
-                    ].map((opt) => {
-                        const currentVal = customColors[activeColorTab]?.[opt.key] || opt.default;
-                        return (
-                            <div key={opt.key} className="space-y-2 group">
-                                <label className="text-xs font-medium text-finrise-muted group-hover:text-finrise-text transition-colors">{opt.label}</label>
-                                <div className="flex items-center gap-3 bg-finrise-input p-3 rounded-xl border border-finrise-border group-hover:border-finrise-accent/50 transition-colors">
-                                    <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-finrise-border/50">
-                                        <input 
-                                            type="color" 
-                                            value={currentVal}
-                                            onChange={(e) => updateCustomColor(activeColorTab, opt.key, e.target.value)}
-                                            className="absolute -top-[50%] -left-[50%] w-[200%] h-[200%] cursor-pointer p-0 m-0"
-                                        />
-                                    </div>
-                                    <div className="flex flex-col min-w-0">
-                                        <span className="text-xs font-mono text-finrise-text uppercase truncate">{currentVal}</span>
-                                        <span className="text-[10px] text-finrise-muted opacity-50 truncate">{opt.key}</span>
+                    {(() => {
+                        const DEFAULTS = {
+                            dark: {
+                                '--color-accent': '#e91d7c',
+                                '--bg-app': '#0f172a',
+                                '--bg-panel': '#1e293b',
+                                '--bg-sidebar': '#111827',
+                                '--text-main': '#f1f5f9',
+                                '--bg-input': '#334155',
+                            },
+                            light: {
+                                '--color-accent': '#e91d7c',
+                                '--bg-app': '#f0f2f5',
+                                '--bg-panel': '#ffffff',
+                                '--bg-sidebar': '#ffffff',
+                                '--bg-input': '#e2e8f0', 
+                                '--text-main': '#1e293b',
+                            }
+                        };
+
+                        return [
+                            { label: 'Vurgu Rengi', key: '--color-accent' },
+                            { label: 'Arkaplan', key: '--bg-app' },
+                            { label: 'Panel', key: '--bg-panel' },
+                            { label: 'Kenar Çubuğu', key: '--bg-sidebar' },
+                            { label: 'Giriş Alanı', key: '--bg-input' },
+                            { label: 'Metin Rengi', key: '--text-main' },
+                        ].map((opt) => {
+                            const defaultVal = DEFAULTS[activeColorTab]?.[opt.key] || '#000000';
+                            const currentVal = customColors[activeColorTab]?.[opt.key] || defaultVal;
+                            
+                            return (
+                                <div key={opt.key} className="space-y-2 group">
+                                    <label className="text-xs font-medium text-finrise-muted group-hover:text-finrise-text transition-colors">{opt.label}</label>
+                                    <div className="flex items-center gap-3 bg-finrise-input p-3 rounded-xl border border-finrise-border group-hover:border-finrise-accent/50 transition-colors">
+                                        <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-finrise-border/50">
+                                            <input 
+                                                type="color" 
+                                                value={currentVal}
+                                                onChange={(e) => updateCustomColor(activeColorTab, opt.key, e.target.value)}
+                                                className="absolute -top-[50%] -left-[50%] w-[200%] h-[200%] cursor-pointer p-0 m-0"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-xs font-mono text-finrise-text uppercase truncate">{currentVal}</span>
+                                            <span className="text-[10px] text-finrise-muted opacity-50 truncate">{opt.key}</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        });
+                    })()}
                   </div>
               </div>
           )}

@@ -45,10 +45,10 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=get_data_dir()), name="static")
 
 
-# Initialize Database
+# Database getter - creates new instance per request for thread safety
 def get_db():
-    db = Database()
-    return db
+    """Return a new Database instance for each request (SQLite thread safety)."""
+    return Database()
 
 @app.get("/")
 def read_root():
@@ -80,6 +80,7 @@ class RecipeRequest(BaseModel):
     bki_26_29: Optional[str] = None
     bki_30_33: Optional[str] = None
     bki_34_plus: Optional[str] = None
+    seasons: Optional[str] = "yaz,kis"
 
 # --- API Endpoints ---
 
@@ -223,7 +224,8 @@ def create_recipe(recipe: RecipeRequest):
             recipe.bki_21_25,
             recipe.bki_26_29 or recipe.bki_21_25,
             recipe.bki_30_33 or recipe.bki_21_25,
-            recipe.bki_34_plus or recipe.bki_21_25
+            recipe.bki_34_plus or recipe.bki_21_25,
+            recipe.seasons
         )
         return {"status": "success", "message": "Recipe added successfully"}
     except Exception as e:
@@ -242,7 +244,8 @@ def update_recipe(recipe_id: int, recipe: RecipeRequest):
             recipe.bki_21_25,
             recipe.bki_26_29 or recipe.bki_21_25,
             recipe.bki_30_33 or recipe.bki_21_25,
-            recipe.bki_34_plus or recipe.bki_21_25
+            recipe.bki_34_plus or recipe.bki_21_25,
+            recipe.seasons
         )
         return {"status": "success", "message": "Recipe updated successfully"}
     except Exception as e:
@@ -275,8 +278,9 @@ def get_settings():
     settings = db.get_all_settings()
     
     # Add season config info
-    from database import get_current_season, get_season_config
-    settings['season'] = get_current_season()
+    # Add season config info
+    from database import get_season_config
+    # settings['season'] = 'auto' # Deprecated
     
     config = get_season_config()
     settings['summer_start'] = config.get('summer_start', '04-01')
@@ -605,8 +609,38 @@ def calculate_bmi_group(weight: float, height: float) -> str:
     else:
         return "34_plus"
 
+def get_season_for_date(date, summer_start: str, summer_end: str) -> str:
+    """Belirtilen tarih için sezonu (yaz/kis) döndür."""
+    import datetime
+    try:
+        # MM-DD formatından ay/gün al
+        s_month, s_day = map(int, summer_start.split('-'))
+        e_month, e_day = map(int, summer_end.split('-'))
+        
+        # Karşılaştırma için tarihleri oluştur (yıl aynı olsun)
+        check_date = datetime.date(2000, date.month, date.day)
+        start_date = datetime.date(2000, s_month, s_day)
+        end_date = datetime.date(2000, e_month, e_day)
+        
+        # Normal aralık (Örn: 04-01 -> 10-01)
+        if start_date <= end_date:
+            if start_date <= check_date < end_date:
+                return "yaz"
+            else:
+                return "kis"
+        # Yıl atlayan aralık (Örn: Aralık - Mart gibi bir durum olursa, gercı yaz genelde yil atlamaz)
+        else:
+             if start_date <= check_date or check_date < end_date:
+                return "yaz"
+             else:
+                return "kis"
+                
+    except Exception as e:
+        print(f"Season split calc error: {e}")
+        return "yaz" # Fallback
+
 def create_single_list(db, template: dict, package_id: int, bki_group: str, 
-                       days: int, exclude_words: list) -> list:
+                       days: int, exclude_words: list, season_filter: str = None) -> list:
     """Tek bir liste için diyet programı oluştur."""
     import random
     
@@ -618,8 +652,8 @@ def create_single_list(db, template: dict, package_id: int, bki_group: str,
         for meal_tuple in template['meals']:
             meal_time, meal_name, meal_type = meal_tuple
             
-            # Pakete ait tarifleri getir
-            recipes = db.get_recipes_for_diet_by_package(package_id, meal_type, exclude_words)
+            # Pakete ait tarifleri getir (sezon filtresi ile)
+            recipes = db.get_recipes_for_diet_by_package(package_id, meal_type, exclude_words, season_filter=season_filter)
             
             # BKİ grubuna göre içerik seç
             candidates = []
@@ -733,6 +767,19 @@ def generate_diet(request: GenerateDietRequest):
             # Güncel BKİ grubunu hesapla
             bki_group = calculate_bmi_group(current_weight, request.height)
             
+            # --- MEVSİM BELİRLEME ---
+            # Liste başlangıç tarihine göre sezonu belirle
+            from database import get_season_config
+            season_config = get_season_config()
+            summer_start = season_config.get("summer_start", "04-01")
+            summer_end = season_config.get("summer_end", "10-01")
+
+            # datetime -> date dönüşümü
+            current_list_date = list_start_date.date()
+            list_season = get_season_for_date(current_list_date, summer_start, summer_end)
+            
+            # Ana DB (global db) üzerinden işlem yap, sezonu filtre olarak geç
+            
             # Bu liste için program oluştur
             diet_program = create_single_list(
                 db=db,
@@ -740,7 +787,8 @@ def generate_diet(request: GenerateDietRequest):
                 package_id=request.package_id,
                 bki_group=bki_group,
                 days=days_per_list,
-                exclude_words=exclude_words
+                exclude_words=exclude_words,
+                season_filter=list_season
             )
             
             # PDF oluştur

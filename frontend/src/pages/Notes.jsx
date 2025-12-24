@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, memo } from 'react';
 import {
   NotebookPen, Plus, Trash2, Search, Save, Calendar, Clock,
   Edit2, Bell, Palette, Pin, Check, X, AlertCircle
@@ -301,8 +301,8 @@ export default function Notes() {
   );
 }
 
-// Subcomponent for list item
-function NoteItem({ note, activeId, onClick, onDelete, onPin, onAlarm }) {
+// Subcomponent for list item - memoized to prevent unnecessary re-renders
+const NoteItem = memo(function NoteItem({ note, activeId, onClick, onDelete, onPin, onAlarm }) {
     const isActive = activeId?.toString() === note.id.toString();
     const style = NOTE_COLORS.find(c => c.id === note.color) || NOTE_COLORS[0];
 
@@ -386,4 +386,4 @@ function NoteItem({ note, activeId, onClick, onDelete, onPin, onAlarm }) {
             </div>
         </motion.div>
     );
-}
+});

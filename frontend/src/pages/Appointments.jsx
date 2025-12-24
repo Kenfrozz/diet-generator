@@ -1,41 +1,40 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   Plus, 
   Search,
   Trash2,
   Phone,
-  Calendar,
   Clock,
   User,
-  MoreVertical,
   CheckCircle,
-  XCircle,
-  Filter,
   Edit2,
   MessageCircle,
-  Activity,
   CalendarClock,
   Bell,
-  X
+  X,
+  StickyNote
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+// Constants moved outside component to prevent re-creation
+const APPOINTMENT_TYPES = [
+  { name: 'Ön görüşme', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  { name: 'Ölçüm', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
+  { name: 'Andulasyon', color: 'bg-orange-500/10 text-orange-500 border-orange-500/20' },
+  { name: 'Spor salonu ön görüşmesi', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' }
+];
+
+const API_URL = 'http://127.0.0.1:8000';
+
 export default function Appointments() {
-  // Constants & Color Mapping
-  const APPOINTMENT_TYPES = [
-    { name: 'Ön görüşme', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
-    { name: 'Ölçüm', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
-    { name: 'Andulasyon', color: 'bg-orange-500/10 text-orange-500 border-orange-500/20' },
-    { name: 'Spor salonu ön görüşmesi', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' }
-  ];
 
   const [appointments, setAppointments] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [viewingNote, setViewingNote] = useState(null);
   
   // Filters
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]); // Default to today
   const [serviceFilter, setServiceFilter] = useState('all');
 
@@ -49,7 +48,6 @@ export default function Appointments() {
       note: ''
   });
 
-  const API_URL = 'http://127.0.0.1:8000';
   
   // Notification state
   const [activeAlert, setActiveAlert] = useState(null);
@@ -88,7 +86,7 @@ export default function Appointments() {
           try {
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             audio.play().catch(e => console.log('Audio play failed', e));
-          } catch (e) {}
+          } catch { /* Audio play silently fails on some platforms */ }
           
           // System notification
           if (Notification.permission === 'granted') {
@@ -114,7 +112,7 @@ export default function Appointments() {
     return () => clearInterval(interval);
   }, [appointments]);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/api/appointments`);
       const data = await response.json();
@@ -122,9 +120,9 @@ export default function Appointments() {
     } catch (error) {
       console.error('Error fetching appointments:', error);
     }
-  };
+  }, []);
 
-  const handleOpenModal = (app = null) => {
+  const handleOpenModal = useCallback((app = null) => {
       if (app) {
           setEditingId(app.id);
           setFormData({
@@ -147,7 +145,7 @@ export default function Appointments() {
           });
       }
       setIsModalOpen(true);
-  };
+  }, []);
 
   const handleSaveAppointment = async (e) => {
       e.preventDefault();
@@ -175,7 +173,7 @@ export default function Appointments() {
       }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
       if (window.confirm('Bu randevuyu silmek istediğinize emin misiniz?')) {
           try {
             await fetch(`${API_URL}/api/appointments/${id}`, { method: 'DELETE' });
@@ -184,36 +182,42 @@ export default function Appointments() {
             console.error('Error deleting appointment:', error);
           }
       }
-  };
+  }, [fetchAppointments]);
 
-  const handleStatusChange = async (id, newStatus) => {
-      try {
-        await fetch(`${API_URL}/api/appointments/${id}/status?status=${newStatus}`, { method: 'PATCH' });
-        fetchAppointments();
-      } catch (error) {
-        console.error('Error updating status:', error);
-      }
-  };
-
-  const openWhatsapp = (phone) => {
+  const openWhatsapp = useCallback((phone) => {
       if (!phone) return;
       // Clean phone number: remove spaces, parens, dashes. Ensure it starts with 90 if standard TR number
       let cleanPhone = phone.replace(/\D/g, '');
       if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
       if (cleanPhone.length === 10) cleanPhone = '90' + cleanPhone;
       
+      // Opens via shell.openExternal due to setWindowOpenHandler in main.cjs
       window.open(`https://wa.me/${cleanPhone}`, '_blank');
-  };
+  }, []);
 
-  const filteredAppointments = appointments.filter(app => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  const filteredAppointments = useMemo(() => {
+    return appointments.filter(app => {
       const matchesSearch = app.clientName.toLowerCase().includes(search.toLowerCase()) || 
                             (app.phone && app.phone.includes(search));
-      const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
       const matchesDate = !dateFilter || app.date === dateFilter;
       const matchesService = serviceFilter === 'all' || (app.types && app.types.includes(serviceFilter));
       
-      return matchesSearch && matchesStatus && matchesDate && matchesService;
-  }).sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time));
+      return matchesSearch && matchesDate && matchesService;
+    }).sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time));
+  }, [appointments, search, dateFilter, serviceFilter]);
+
+  // Pagination Logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentAppointments = filteredAppointments.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, dateFilter, serviceFilter]);
 
   return (
     <div className="h-full flex flex-col animate-in fade-in zoom-in duration-300">
@@ -257,18 +261,6 @@ export default function Appointments() {
                 ))}
             </select>
 
-            {/* Status Filter - Hidden on small screens */}
-            <select 
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="bg-finrise-input border border-finrise-border rounded-lg px-2 py-2 text-sm text-finrise-text outline-none focus:border-finrise-accent cursor-pointer shrink-0 hidden md:block"
-            >
-                <option value="all">Durum</option>
-                <option value="pending">Bekliyor</option>
-                <option value="confirmed">Onaylandı</option>
-                <option value="cancelled">İptal</option>
-            </select>
-
             <button 
                 onClick={() => handleOpenModal()}
                 className="flex items-center gap-2 bg-finrise-accent text-white px-3 py-2 rounded-lg hover:bg-finrise-accent/90 transition-colors shadow-lg shadow-finrise-accent/20 shrink-0"
@@ -289,8 +281,7 @@ export default function Appointments() {
                             <th className="px-4 py-3 text-xs font-semibold text-finrise-muted uppercase tracking-wider">Danışan</th>
                             <th className="px-4 py-3 text-xs font-semibold text-finrise-muted uppercase tracking-wider">Tarih</th>
                             <th className="px-4 py-3 text-xs font-semibold text-finrise-muted uppercase tracking-wider">Hizmetler</th>
-                            <th className="px-4 py-3 text-xs font-semibold text-finrise-muted uppercase tracking-wider hidden lg:table-cell">Not</th>
-                            <th className="px-4 py-3 text-xs font-semibold text-finrise-muted uppercase tracking-wider text-right">Durum</th>
+                            <th className="px-4 py-3 text-xs font-semibold text-finrise-muted uppercase tracking-wider text-right">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -302,12 +293,15 @@ export default function Appointments() {
                                 </td>
                             </tr>
                         ) : (
-                            filteredAppointments.map((app, idx) => (
+                            currentAppointments.map((app, idx) => {
+                                const isPast = new Date(app.date + 'T' + app.time) < new Date();
+                                return (
                                 <tr 
                                     key={app.id} 
                                     className={cn(
                                         "group transition-colors hover:bg-finrise-input/30",
-                                        idx !== filteredAppointments.length - 1 && "border-b border-finrise-border/50"
+                                        idx !== currentAppointments.length - 1 && "border-b border-finrise-border/50",
+                                        isPast && "opacity-60 bg-finrise-input/10 grayscale-[0.5]"
                                     )}
                                 >
                                     {/* Client */}
@@ -317,18 +311,23 @@ export default function Appointments() {
                                                 <User size={16} className="text-finrise-accent" />
                                             </div>
                                             <div className="min-w-0">
-                                                <div className="font-medium text-finrise-text truncate">{app.clientName}</div>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className="text-xs text-finrise-muted truncate">{app.phone || '-'}</span>
-                                                    {app.phone && (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="font-medium text-finrise-text truncate">{app.clientName}</div>
+                                                    {app.note && (
                                                         <button 
-                                                            onClick={() => openWhatsapp(app.phone)}
-                                                            className="p-1 rounded bg-green-500/10 text-green-500 hover:bg-green-500/20 transition-colors shrink-0"
-                                                            title="WhatsApp"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setViewingNote({ text: app.note, client: app.clientName });
+                                                            }}
+                                                            className="flex items-center justify-center w-5 h-5 rounded-full bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-white transition-all shadow-sm"
+                                                            title="Notu var"
                                                         >
-                                                            <MessageCircle size={10} />
+                                                            <StickyNote size={10} className="fill-current" />
                                                         </button>
                                                     )}
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-xs text-finrise-muted truncate">{app.phone || '-'}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -345,72 +344,79 @@ export default function Appointments() {
                                     {/* Services */}
                                     <td className="px-4 py-3">
                                         <div className="flex flex-wrap gap-1">
-                                            {app.types && app.types.length > 0 ? app.types.slice(0, 2).map(t => {
+                                            {app.types && app.types.length > 0 ? app.types.map(t => {
                                                 const typeDef = APPOINTMENT_TYPES.find(def => def.name === t);
                                                 const colorClass = typeDef ? typeDef.color : 'bg-finrise-accent/10 text-finrise-accent border-finrise-accent/20';
                                                 return (
-                                                    <span key={t} className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium", colorClass)}>
-                                                        {t.split(' ')[0]}
+                                                    <span key={t} className={cn("text-[11px] px-2 py-0.5 rounded border font-medium", colorClass)}>
+                                                        {t}
                                                     </span>
                                                 );
                                             }) : <span className="text-xs text-finrise-muted">-</span>}
-                                            {app.types && app.types.length > 2 && (
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-finrise-input text-finrise-muted">
-                                                    +{app.types.length - 2}
-                                                </span>
-                                            )}
                                         </div>
                                     </td>
                                     
-                                    {/* Note */}
-                                    <td className="px-4 py-3 hidden lg:table-cell">
-                                        <p className="text-xs text-finrise-muted line-clamp-1 max-w-[150px]" title={app.note}>
-                                            {app.note || '-'}
-                                        </p>
-                                    </td>
-                                    
-                                    {/* Status & Actions */}
-                                    <td className="px-4 py-3">
+                                    {/* Actions Only */}
+                                    <td className="px-4 py-3 text-right">
                                         <div className="flex items-center justify-end gap-2">
-                                            <select 
-                                                value={app.status}
-                                                onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                                                className={cn(
-                                                    "text-[10px] font-semibold px-2 py-1 rounded-full border outline-none cursor-pointer",
-                                                    app.status === 'confirmed' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                                                    app.status === 'cancelled' ? "bg-red-500/10 text-red-400 border-red-500/20" :
-                                                    "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                            <div className="flex items-center gap-1 transition-opacity">
+                                                {app.phone && (
+                                                    <button 
+                                                        onClick={() => openWhatsapp(app.phone)}
+                                                        className="p-1.5 rounded-lg text-green-500 hover:bg-green-500/10 transition-colors"
+                                                        title="WhatsApp"
+                                                    >
+                                                        <MessageCircle size={16} />
+                                                    </button>
                                                 )}
-                                            >
-                                                <option value="pending">Bekliyor</option>
-                                                <option value="confirmed">Onaylandı</option>
-                                                <option value="cancelled">İptal</option>
-                                            </select>
-                                            
-                                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+
                                                 <button 
                                                     onClick={() => handleOpenModal(app)}
                                                     className="p-1.5 text-finrise-muted hover:text-finrise-accent hover:bg-finrise-input rounded-lg transition-colors"
                                                     title="Düzenle"
                                                 >
-                                                    <Edit2 size={14} />
+                                                    <Edit2 size={16} />
                                                 </button>
                                                 <button 
                                                     onClick={() => handleDelete(app.id)}
                                                     className="p-1.5 text-finrise-muted hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                                                     title="Sil"
                                                 >
-                                                    <Trash2 size={14} />
+                                                    <Trash2 size={16} />
                                                 </button>
                                             </div>
                                         </div>
                                     </td>
                                 </tr>
-                            ))
+                                )
+                            })
                         )}
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination Controls */}
+            {filteredAppointments.length > itemsPerPage && (
+                <div className="border-t border-finrise-border bg-finrise-input/20 p-3 flex items-center justify-between">
+                    <button 
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(c => Math.max(1, c - 1))}
+                        className="px-3 py-1 text-xs font-medium text-finrise-muted hover:text-finrise-text disabled:opacity-50 disabled:hover:text-finrise-muted"
+                    >
+                        Önceki
+                    </button>
+                    <span className="text-xs text-finrise-muted">
+                        Sayfa {currentPage} / {Math.ceil(filteredAppointments.length / itemsPerPage)}
+                    </span>
+                    <button 
+                        disabled={currentPage === Math.ceil(filteredAppointments.length / itemsPerPage)}
+                        onClick={() => setCurrentPage(c => Math.min(Math.ceil(filteredAppointments.length / itemsPerPage), c + 1))}
+                        className="px-3 py-1 text-xs font-medium text-finrise-muted hover:text-finrise-text disabled:opacity-50 disabled:hover:text-finrise-muted"
+                    >
+                        Sonraki
+                    </button>
+                </div>
+            )}
         </div>
       </div>
 
@@ -517,6 +523,34 @@ export default function Appointments() {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+      )}
+
+      {/* Note View Modal */}
+      {viewingNote && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setViewingNote(null)}>
+            <div className="bg-finrise-panel w-full max-w-sm rounded-2xl border border-finrise-border shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500">
+                        <StickyNote size={20} />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-finrise-text">Randevu Notu</h3>
+                        <p className="text-sm text-finrise-muted">{viewingNote.client}</p>
+                    </div>
+                </div>
+                
+                <div className="bg-finrise-input/50 rounded-xl p-4 text-sm text-finrise-text mb-6 max-h-[60vh] overflow-y-auto whitespace-pre-wrap">
+                    {viewingNote.text}
+                </div>
+
+                <button 
+                    onClick={() => setViewingNote(null)}
+                    className="w-full py-2.5 rounded-lg bg-finrise-input hover:bg-finrise-border text-finrise-text transition-colors font-medium"
+                >
+                    Kapat
+                </button>
             </div>
         </div>
       )}

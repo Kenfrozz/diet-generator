@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -41,6 +41,40 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  // Handle external links - open in new Electron window that auto-closes after 3 seconds
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    // For external URLs (WhatsApp, etc.)
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      // Create a new window for the external URL
+      const externalWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        autoHideMenuBar: true,
+        show: false,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true
+        }
+      });
+      
+      externalWindow.loadURL(url);
+      
+      // Close immediately after page finishes loading
+      externalWindow.webContents.once('did-finish-load', () => {
+        externalWindow.show();
+        // Small delay to ensure redirect happens before closing
+        setTimeout(() => {
+          if (!externalWindow.isDestroyed()) {
+            externalWindow.close();
+          }
+        }, 500);
+      });
+      
+      return { action: 'deny' }; // Prevent default window creation
+    }
+    return { action: 'allow' };
   });
 
   mainWindow.on('maximize', () => {

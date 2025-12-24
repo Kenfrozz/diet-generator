@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 
 const API_URL = 'http://127.0.0.1:8000';
-const { ipcRenderer } = window.require('electron');
+const ipcRenderer = window.require ? window.require('electron').ipcRenderer : { send: () => {} };
 
 export default function Login() {
   const { appSettings } = useApp();
@@ -123,15 +123,17 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1a1a2e] overflow-hidden relative" style={{ WebkitAppRegion: 'drag' }}>
-      {/* Close Button */}
-      <button 
-        onClick={() => ipcRenderer.send('window-close')}
-        className="absolute top-6 right-6 z-50 text-white/40 hover:text-white hover:bg-red-500/20 p-2 rounded-full transition-all"
-        title="Kapat"
-        style={{ WebkitAppRegion: 'no-drag' }}
-      >
-        <X size={24} />
-      </button>
+      {/* Close Button - Electron Only */}
+      {window.require && (
+        <button 
+          onClick={() => ipcRenderer.send('window-close')}
+          className="absolute top-6 right-6 z-50 text-white/40 hover:text-white hover:bg-red-500/20 p-2 rounded-full transition-all"
+          title="Kapat"
+          style={{ WebkitAppRegion: 'no-drag' }}
+        >
+          <X size={24} />
+        </button>
+      )}
 
       {/* Background gradients */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">

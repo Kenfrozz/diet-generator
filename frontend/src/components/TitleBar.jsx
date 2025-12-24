@@ -4,7 +4,11 @@ import { cn } from '../lib/utils';
 import { useTheme } from '../contexts/ThemeContext';
 import { useApp } from '../contexts/AppContext';
 
-const { ipcRenderer } = window.require('electron');
+const ipcRenderer = window.require ? window.require('electron').ipcRenderer : { 
+  send: () => {}, 
+  on: () => {}, 
+  removeListener: () => {} 
+};
 
 export function TitleBar() {
   const { appSettings } = useApp();
@@ -51,7 +55,7 @@ export function TitleBar() {
   );
 
   return (
-    <div className="h-[32px] bg-finrise-input flex items-center justify-between select-none z-50 border-b border-finrise-border w-full relative" style={{ WebkitAppRegion: 'drag' }}>
+    <div className="h-[32px] bg-finrise-dark flex items-center justify-between select-none z-50 border-b border-finrise-border w-full relative" style={{ WebkitAppRegion: 'drag' }}>
       
       {/* Centered Title */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
@@ -67,30 +71,35 @@ export function TitleBar() {
         {/* Theme Toggle */}
         <button 
             onClick={toggleTheme}
-            className="w-[46px] h-full flex items-center justify-center hover:bg-white/10 text-finrise-muted hover:text-finrise-accent transition-colors outline-none border-r border-finrise-border"
+            className="w-[46px] h-full flex items-center justify-center hover:bg-white/10 text-finrise-muted hover:text-finrise-accent transition-colors outline-none"
             title={isDarkMode ? "Aydınlık Moda Geç" : "Karanlık Moda Geç"}
         >
             {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
         </button>
 
-        <button 
-          onClick={() => ipcRenderer.send('window-minimize')}
-          className="w-[46px] h-full flex items-center justify-center hover:bg-white/10 text-finrise-muted hover:text-finrise-text transition-colors outline-none"
-        >
-          <Minus size={14} />
-        </button>
-        <button 
-          onClick={handleMaximize}
-          className="w-[46px] h-full flex items-center justify-center hover:bg-white/10 text-finrise-muted hover:text-finrise-text transition-colors outline-none"
-        >
-          {isMaximized ? <RestoreIcon /> : <MaximizeIcon />}
-        </button>
-        <button 
-          onClick={() => ipcRenderer.send('window-close')}
-          className="w-[46px] h-full flex items-center justify-center hover:bg-finrise-red hover:text-white text-finrise-muted transition-colors outline-none group"
-        >
-          <X size={14} />
-        </button>
+        {/* Electron Window Controls */}
+        {window.require && (
+          <>
+            <button 
+              onClick={() => ipcRenderer.send('window-minimize')}
+              className="w-[46px] h-full flex items-center justify-center hover:bg-white/10 text-finrise-muted hover:text-finrise-text transition-colors outline-none"
+            >
+              <Minus size={14} />
+            </button>
+            <button 
+              onClick={handleMaximize}
+              className="w-[46px] h-full flex items-center justify-center hover:bg-white/10 text-finrise-muted hover:text-finrise-text transition-colors outline-none"
+            >
+              {isMaximized ? <RestoreIcon /> : <MaximizeIcon />}
+            </button>
+            <button 
+              onClick={() => ipcRenderer.send('window-close')}
+              className="w-[46px] h-full flex items-center justify-center hover:bg-finrise-red hover:text-white text-finrise-muted transition-colors outline-none group"
+            >
+              <X size={14} />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

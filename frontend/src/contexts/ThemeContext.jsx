@@ -68,7 +68,7 @@ export function ThemeProvider({ children }) {
     const colors = customColors[effectiveTheme] || {};
     
     [
-      '--color-accent', '--bg-app', '--bg-panel', '--bg-sidebar', '--text-main'
+      '--color-accent', '--bg-app', '--bg-panel', '--bg-sidebar', '--text-main', '--bg-input'
     ].forEach(k => root.style.removeProperty(k));
 
     Object.entries(colors).forEach(([key, value]) => {
@@ -101,7 +101,8 @@ export function ThemeProvider({ children }) {
       '--bg-panel', 
       '--bg-sidebar', 
       '--text-main',
-      '--text-muted'
+      '--text-muted',
+      '--bg-input'
     ].forEach(k => root.style.removeProperty(k));
     
     // Set default accent immediately as inline style until page reload or if context handles it? 

@@ -20,6 +20,7 @@ export function RecipeModal({ isOpen, onClose, onSave, recipe }) {
     bki_26_29: '',
     bki_30_33: '',
     bki_34_plus: '',
+    seasons: 'yaz,kis',
     package_ids: []
   });
 
@@ -40,6 +41,7 @@ export function RecipeModal({ isOpen, onClose, onSave, recipe }) {
         bki_26_29: recipe.bki_26_29 || '',
         bki_30_33: recipe.bki_30_33 || '',
         bki_34_plus: recipe.bki_34_plus || '',
+        seasons: recipe.seasons || 'yaz,kis',
         package_ids: []
       });
     } else if (isOpen) {
@@ -50,6 +52,7 @@ export function RecipeModal({ isOpen, onClose, onSave, recipe }) {
         bki_26_29: '',
         bki_30_33: '',
         bki_34_plus: '',
+        seasons: 'yaz,kis',
         package_ids: []
       });
     }
@@ -88,6 +91,20 @@ export function RecipeModal({ isOpen, onClose, onSave, recipe }) {
       return { ...prev, package_ids: newIds };
     });
   };
+  const toggleSeason = (season) => {
+    setFormData(prev => {
+      const currentSeasons = prev.seasons ? prev.seasons.split(',') : [];
+      let newSeasons;
+      
+      if (currentSeasons.includes(season)) {
+        newSeasons = currentSeasons.filter(s => s !== season);
+      } else {
+        newSeasons = [...currentSeasons, season];
+      }
+      
+      return { ...prev, seasons: newSeasons.join(',') };
+    });
+  };
 
   // İlk BKİ içeriğini diğerlerine kopyala
   const copyToAll = () => {
@@ -112,6 +129,7 @@ export function RecipeModal({ isOpen, onClose, onSave, recipe }) {
       bki_26_29: formData.bki_26_29 || formData.bki_21_25,
       bki_30_33: formData.bki_30_33 || formData.bki_21_25,
       bki_34_plus: formData.bki_34_plus || formData.bki_21_25,
+      seasons: formData.seasons
     };
     
     await onSave(recipePayload);
@@ -151,7 +169,7 @@ export function RecipeModal({ isOpen, onClose, onSave, recipe }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl w-full max-w-4xl shadow-2xl scale-100 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-hidden flex flex-col">
         
         {/* Header */}
@@ -198,6 +216,42 @@ export function RecipeModal({ isOpen, onClose, onSave, recipe }) {
                 <option value="ara_ogun_3">Ara Öğün 3</option>
                 <option value="ozel_icecek">Özel İçecek</option>
               </select>
+            </div>
+          </div>
+
+          {/* Mevsim Seçimi */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-400">Geçerli Mevsimler</label>
+            <div className="flex gap-4">
+               <label className={cn(
+                  "flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all",
+                  formData.seasons.includes('yaz') 
+                    ? "bg-yellow-500/20 border-yellow-500/50 text-yellow-300" 
+                    : "bg-black/20 border-white/10 text-gray-400 hover:border-white/20"
+               )}>
+                  <input 
+                    type="checkbox" 
+                    className="hidden"
+                    checked={formData.seasons.includes('yaz')}
+                    onChange={() => toggleSeason('yaz')}
+                  />
+                  <span>☀️ Yaz</span>
+               </label>
+               
+               <label className={cn(
+                  "flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all",
+                  formData.seasons.includes('kis') 
+                    ? "bg-blue-500/20 border-blue-500/50 text-blue-300" 
+                    : "bg-black/20 border-white/10 text-gray-400 hover:border-white/20"
+               )}>
+                  <input 
+                    type="checkbox" 
+                    className="hidden"
+                    checked={formData.seasons.includes('kis')}
+                    onChange={() => toggleSeason('kis')}
+                  />
+                  <span>❄️ Kış</span>
+               </label>
             </div>
           </div>
 

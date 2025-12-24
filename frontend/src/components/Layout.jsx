@@ -1,6 +1,6 @@
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useNotes } from '../context/NotesContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell } from 'lucide-react';
@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 export default function Layout() {
   const { activeAlert, setActiveAlert, handleNoteSelect } = useNotes();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -27,8 +28,12 @@ export default function Layout() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             className="absolute inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            onClick={() => setActiveAlert(null)}
           >
-             <div className="bg-finrise-panel border border-finrise-accent shadow-2xl rounded-2xl p-6 max-w-sm w-full relative">
+             <div 
+               className="bg-finrise-panel border border-finrise-accent shadow-2xl rounded-2xl p-6 max-w-sm w-full relative"
+               onClick={(e) => e.stopPropagation()}
+             >
                 <div className="flex flex-col items-center text-center gap-4">
                    <div className="w-16 h-16 bg-finrise-accent/20 rounded-full flex items-center justify-center animate-bounce">
                       <Bell size={32} className="text-finrise-accent" />
