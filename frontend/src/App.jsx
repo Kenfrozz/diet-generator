@@ -1,4 +1,5 @@
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { NotesProvider } from './context/NotesContext';
 import { AppProvider } from './contexts/AppContext';
 import Login from './pages/Login';
@@ -16,33 +17,68 @@ import DietCombinations from './pages/DietCombinations';
 import DetoksBot from './pages/DetoksBot';
 import Profile from './pages/Profile';
 
+function MainContent() {
+  const [targetRoute, setTargetRoute] = useState(null);
+  const [isReady, setIsReady] = useState(false);
+  const location = useLocation();
+
+  // Restore route on mount
+  useEffect(() => {
+    const lastRoute = localStorage.getItem('lastRoute');
+    // Only restore on initial mount - check if we're at root path
+    if (lastRoute && lastRoute !== '/login' && lastRoute !== '/' && location.pathname === '/') {
+      setTargetRoute(lastRoute);
+    }
+    setIsReady(true);
+  }, []);
+
+  // Save route on change (only after we are ready)
+  useEffect(() => {
+    if (isReady && location.pathname !== '/login' && location.pathname !== '/') {
+      localStorage.setItem('lastRoute', location.pathname);
+    }
+  }, [location, isReady]);
+
+  // Initial loading state
+  if (!isReady) return null;
+
+  // Perform initial redirect if needed
+  if (targetRoute && location.pathname === '/') {
+    return <Navigate to={targetRoute} replace />;
+  }
+
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      
+      <Route element={<Layout />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/recipes" element={<Recipes />} />
+        <Route path="/templates" element={<Templates />} />
+        <Route path="/generate" element={<DietGenerator />} />
+        
+        <Route path="/packages" element={<DietPackages />} />
+        <Route path="/combinations" element={<DietCombinations />} />
+        <Route path="/clients" element={<Clients />} />
+        <Route path="/appointments" element={<Appointments />} />
+        <Route path="/notes" element={<Notes />} />
+        <Route path="/detox-bot" element={<DetoksBot />} />
+        <Route path="/profile" element={<Profile />} />
+
+        <Route path="/settings" element={<Settings />} />
+      </Route>
+
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
+}
+
 function App() {
   return (
     <AppProvider>
       <NotesProvider>
         <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            
-            <Route element={<Layout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/recipes" element={<Recipes />} />
-              <Route path="/templates" element={<Templates />} />
-              <Route path="/generate" element={<DietGenerator />} />
-              
-              <Route path="/packages" element={<DietPackages />} />
-            <Route path="/combinations" element={<DietCombinations />} />
-              <Route path="/clients" element={<Clients />} />
-              <Route path="/appointments" element={<Appointments />} />
-              <Route path="/notes" element={<Notes />} />
-              <Route path="/detox-bot" element={<DetoksBot />} />
-              <Route path="/profile" element={<Profile />} />
-
-              <Route path="/settings" element={<Settings />} />
-            </Route>
-
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+          <MainContent />
         </Router>
       </NotesProvider>
     </AppProvider>

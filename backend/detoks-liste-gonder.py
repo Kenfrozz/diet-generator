@@ -4,14 +4,21 @@ import os
 import pyautogui
 import pyperclip
 import time
+import threading
 
-# Ensure keyboard is imported; it should be installed now
+# Use pynput for global keyboard hooks (more reliable on Windows)
+try:
+    from pynput import keyboard as pynput_keyboard
+except ImportError:
+    with open("bot_error_import.log", "w") as f:
+        f.write("pynput module not found. Install with: pip install pynput\n")
+    sys.exit(1)
+
+# Also import keyboard for typing (different purpose)
 try:
     import keyboard
 except ImportError:
-    with open("bot_error_import.log", "w") as f:
-        f.write("keyboard module not found\n")
-    sys.exit(1)
+    keyboard = None
 
 # Debug Log
 def log(msg):
@@ -23,32 +30,33 @@ def log(msg):
 
 log("Script Started")
 
-try:
-    # Agresif durdurma dinleyicisi (Callback-based)
-    def aggressive_exit():
-        log("🛑 ACİL DURDURMA: F4 tuşuna basıldı.")
-        print("\n🛑 ACİL DURDURMA: F4 tuşuna basıldı. Bot kapatılıyor...")
-        # Force kill
-        os._exit(0)
+# Global stop flag
+stop_requested = False
 
-    # Register hotkey
-    keyboard.add_hotkey('f4', aggressive_exit)
-    log("Hotkey registered: F4")
+def on_key_press(key):
+    global stop_requested
+    try:
+        if key == pynput_keyboard.Key.f4:
+            log("🛑 ACİL DURDURMA: F4 tuşuna basıldı.")
+            print("\n🛑 ACİL DURDURMA: F4 tuşuna basıldı. Bot kapatılıyor...")
+            stop_requested = True
+            os._exit(0)
+    except:
+        pass
 
-    sayac = 0
-    sayi = 5
-    if len(sys.argv) > 1:
-        try:
-            sayi = int(sys.argv[1])
-            log(f"Count received from args: {sayi}")
-        except:
-            pass
-            
-except Exception as e:
-    with open("bot_error.log", "w") as f:
-        f.write(f"Error: {e}\n")
-        traceback.print_exc(file=f)
-    sys.exit(1)
+# Start keyboard listener in background thread
+listener = pynput_keyboard.Listener(on_press=on_key_press)
+listener.start()
+log("F4 Hotkey listener started with pynput")
+
+sayac = 0
+sayi = 5
+if len(sys.argv) > 1:
+    try:
+        sayi = int(sys.argv[1])
+        log(f"Count received from args: {sayi}")
+    except:
+        pass
 
 for i in range(sayi):
     sys.stdout.flush() # Ensure print is flushed

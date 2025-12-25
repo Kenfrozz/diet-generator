@@ -32,10 +32,11 @@ const API_URL = 'http://127.0.0.1:8000';
 export function Sidebar() {
   const { appSettings } = useApp();
   const navigate = useNavigate();
-  const [openGroups, setOpenGroups] = useState({ 'Diyetler': true });
+  const [openGroups, setOpenGroups] = useState({});
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem('sidebarCollapsed') === 'true';
   });
+  const [tooltip, setTooltip] = useState({ visible: false, text: '', top: 0 });
 
   const toggleCollapsed = () => {
     const newState = !collapsed;
@@ -50,6 +51,16 @@ export function Sidebar() {
 
   const setGroupOpen = (label, isOpen) => {
     setOpenGroups(prev => ({ ...prev, [label]: isOpen }));
+  };
+
+  const showTooltip = (e, text) => {
+    if (!collapsed) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTooltip({ visible: true, text, top: rect.top + rect.height / 2 });
+  };
+
+  const hideTooltip = () => {
+    setTooltip({ visible: false, text: '', top: 0 });
   };
 
   const menuItems = [
@@ -85,6 +96,20 @@ export function Sidebar() {
         collapsed ? "w-[52px]" : "w-[240px]"
       )}
     >
+      {/* Floating Tooltip */}
+      {tooltip.visible && (
+        <div 
+          className="fixed z-[99999] pointer-events-none"
+          style={{ left: '60px', top: tooltip.top, transform: 'translateY(-50%)' }}
+        >
+          <div className="flex items-center">
+            <div className="w-0 h-0 border-y-[6px] border-y-transparent border-r-[6px] border-r-[#1a1a1f]" />
+            <div className="bg-[#1a1a1f] text-white text-[13px] font-medium px-3 py-2 rounded-lg shadow-lg border border-white/10">
+              {tooltip.text}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Toggle Button */}
       <button 
         onClick={toggleCollapsed}
@@ -177,7 +202,8 @@ export function Sidebar() {
                        <NavLink
                          key={child.path}
                          to={child.path}
-                         title={child.label}
+                         onMouseEnter={(e) => showTooltip(e, child.label)}
+                          onMouseLeave={hideTooltip}
                          className={({ isActive }) => cn(
                            "w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-200 group/icon",
                            isActive 
@@ -271,13 +297,14 @@ export function Sidebar() {
                
               <NavLink
                 to={item.path}
+                onMouseEnter={(e) => showTooltip(e, item.label)}
+                onMouseLeave={hideTooltip}
                 className={({ isActive }) => cn(
                   "flex items-center relative group/item h-[40px] px-0 transition-all duration-300",
                   isActive 
                     ? "bg-finrise-input/50 text-finrise-text font-medium" 
                     : "text-finrise-muted hover:bg-finrise-input/30 hover:text-finrise-text"
                 )}
-                title={collapsed ? item.label : ""}
               >
                 {({ isActive }) => (
                   <>
@@ -339,11 +366,12 @@ export function Sidebar() {
           <NavLink
             key={item.path}
             to={item.path}
+            onMouseEnter={(e) => showTooltip(e, item.label)}
+            onMouseLeave={hideTooltip}
             className={({ isActive }) => cn(
               "flex items-center relative group h-[50px] px-0 text-finrise-muted hover:bg-finrise-input/50 hover:text-finrise-text",
               isActive && "text-finrise-text bg-finrise-input/50"
             )}
-            title={collapsed ? item.label : ""}
           >
             <div className={cn(
                 "flex items-center justify-center shrink-0 transition-all duration-300 h-full",

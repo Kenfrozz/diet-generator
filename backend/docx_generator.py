@@ -84,17 +84,7 @@ class DOCXGenerator:
         return file_path
     
     def _create_cover_page(self, doc, patient_name, start_date, patient_info):
-        """Kapak sayfası oluştur."""
-        
-        # Başlık
-        title = doc.add_paragraph()
-        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = title.add_run("KİŞİYE ÖZEL BESLENME PROGRAMI")
-        run.bold = True
-        run.font.size = Pt(24)
-        run.font.color.rgb = self.colors['green']
-        
-        doc.add_paragraph()  # Boşluk
+        """Kapak sayfası oluştur - Kullanıcı formatı."""
         
         # Hasta bilgileri
         weight = patient_info.get('weight', 0)
@@ -121,61 +111,130 @@ class DOCXGenerator:
             ideal_kilo = height_m * height_m * 23
             gecmemesi_gereken = height_m * height_m * 30
         
-        # Bilgi tablosu
-        table = doc.add_table(rows=9, cols=2)
-        table.alignment = WD_TABLE_ALIGNMENT.CENTER
-        table.autofit = False
+        # === AD SOYAD ===
+        name_para = doc.add_paragraph()
+        name_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = name_para.add_run("Ad Soyad: ")
+        run.font.size = Pt(14)
+        run.font.color.rgb = self.colors['gray']
+        run = name_para.add_run(patient_name.upper())
+        run.bold = True
+        run.font.size = Pt(16)
+        run.font.color.rgb = self.colors['dark']
+        
+        doc.add_paragraph()
+        
+        # === BAŞLANGIÇ KİLOSU - BOY - YAŞ (Tablo ile iki yana yaslı) ===
+        info_table = doc.add_table(rows=1, cols=3)
+        info_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        info_table.autofit = True
         
         # Sütun genişlikleri
-        for cell in table.columns[0].cells:
-            cell.width = Cm(6)
-        for cell in table.columns[1].cells:
-            cell.width = Cm(8)
+        for cell in info_table.columns[0].cells:
+            cell.width = Cm(5.5)
+        for cell in info_table.columns[1].cells:
+            cell.width = Cm(5.5)
+        for cell in info_table.columns[2].cells:
+            cell.width = Cm(5.5)
         
-        info_rows = [
-            ("Ad Soyad", patient_name.upper()),
-            ("Başlangıç Kilosu", f"{weight:.1f} kg" if weight else "-"),
-            ("Boy", f"{height:.0f} cm" if height else "-"),
-            ("Yaş", f"{yas} yaş" if yas else "-"),
-            ("BKİ (Vücut Kitle İndeksi)", f"{bki:.1f}" if bki else "-"),
-            ("İdeal Kilo", f"{ideal_kilo:.1f} kg" if ideal_kilo else "-"),
-            ("Geçmemeniz Gereken Kilo", f"{gecmemesi_gereken:.1f} kg" if gecmemesi_gereken else "-"),
-            ("Başlangıç Tarihi", start_date if start_date else "-"),
-            ("Kontrol Tarihi", end_date if end_date else "-"),
-        ]
+        row = info_table.rows[0]
         
-        for idx, (label, value) in enumerate(info_rows):
-            row = table.rows[idx]
-            
-            # Sol hücre (etiket)
+        # Sol hücre - Başlangıç
+        if weight:
             left_cell = row.cells[0]
             left_para = left_cell.paragraphs[0]
-            left_run = left_para.add_run(label)
-            left_run.bold = True
-            left_run.font.size = Pt(12)
-            left_run.font.color.rgb = self.colors['dark']
-            self._set_cell_shading(left_cell, 'F5F5F5')
-            
-            # Sağ hücre (değer)
-            right_cell = row.cells[1]
+            left_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            run = left_para.add_run("Başlangıç: ")
+            run.font.size = Pt(12)
+            run.font.color.rgb = self.colors['gray']
+            run = left_para.add_run(f"{weight:.1f} kg")
+            run.bold = True
+            run.font.size = Pt(13)
+            run.font.color.rgb = self.colors['dark']
+        
+        # Orta hücre - Boy
+        if height:
+            mid_cell = row.cells[1]
+            mid_para = mid_cell.paragraphs[0]
+            mid_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = mid_para.add_run("Boy: ")
+            run.font.size = Pt(12)
+            run.font.color.rgb = self.colors['gray']
+            run = mid_para.add_run(f"{height:.0f} cm")
+            run.bold = True
+            run.font.size = Pt(13)
+            run.font.color.rgb = self.colors['dark']
+        
+        # Sağ hücre - Yaş
+        if yas:
+            right_cell = row.cells[2]
             right_para = right_cell.paragraphs[0]
-            right_run = right_para.add_run(str(value))
-            right_run.font.size = Pt(12)
-            
-            # Önemli değerleri renklendir
-            if label == "BKİ (Vücut Kitle İndeksi)":
-                if bki < 26:
-                    right_run.font.color.rgb = self.colors['green']
-                elif bki < 30:
-                    right_run.font.color.rgb = self.colors['orange']
-                else:
-                    right_run.font.color.rgb = self.colors['red']
-            elif label == "İdeal Kilo":
-                right_run.font.color.rgb = self.colors['green']
-                right_run.bold = True
-            elif label == "Geçmemeniz Gereken Kilo":
-                right_run.font.color.rgb = self.colors['red']
-                right_run.bold = True
+            right_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+            run = right_para.add_run("Yaş: ")
+            run.font.size = Pt(12)
+            run.font.color.rgb = self.colors['gray']
+            run = right_para.add_run(f"{yas}")
+            run.bold = True
+            run.font.size = Pt(13)
+            run.font.color.rgb = self.colors['dark']
+        
+        doc.add_paragraph()
+        
+        # === KONTROL TARİHİ ===
+        if end_date:
+            control_para = doc.add_paragraph()
+            control_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = control_para.add_run("Kontrol Tarihi: ")
+            run.font.size = Pt(12)
+            run.font.color.rgb = self.colors['gray']
+            run = control_para.add_run(end_date.upper())
+            run.bold = True
+            run.font.size = Pt(14)
+            run.font.color.rgb = self.colors['green']
+        
+        for _ in range(2):
+            doc.add_paragraph()
+        
+        # === BKİ ===
+        if bki:
+            bki_para = doc.add_paragraph()
+            bki_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = bki_para.add_run("BKİ: ")
+            run.font.size = Pt(14)
+            run.font.color.rgb = self.colors['gray']
+            run = bki_para.add_run(f"{bki:.1f}")
+            run.bold = True
+            run.font.size = Pt(18)
+            if bki < 26:
+                run.font.color.rgb = self.colors['green']
+            elif bki < 30:
+                run.font.color.rgb = self.colors['orange']
+            else:
+                run.font.color.rgb = self.colors['red']
+        
+        # === İDEAL KİLO ===
+        if ideal_kilo:
+            ideal_para = doc.add_paragraph()
+            ideal_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = ideal_para.add_run("İdeal Kilonuz: ")
+            run.font.size = Pt(13)
+            run.font.color.rgb = self.colors['gray']
+            run = ideal_para.add_run(f"{ideal_kilo:.1f} kg")
+            run.bold = True
+            run.font.size = Pt(15)
+            run.font.color.rgb = self.colors['green']
+        
+        # === GEÇMEMESİ GEREKEN KİLO ===
+        if gecmemesi_gereken:
+            max_para = doc.add_paragraph()
+            max_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = max_para.add_run("Geçmemeniz Gereken Kilo: ")
+            run.font.size = Pt(13)
+            run.font.color.rgb = self.colors['gray']
+            run = max_para.add_run(f"{gecmemesi_gereken:.1f} kg")
+            run.bold = True
+            run.font.size = Pt(15)
+            run.font.color.rgb = self.colors['red']
 
     def _create_day_page(self, doc, day_data):
         """Gün sayfası oluştur (PDF stili ile)."""
