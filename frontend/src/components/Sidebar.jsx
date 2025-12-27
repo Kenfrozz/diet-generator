@@ -25,7 +25,7 @@ import {
   Sparkles
 } from 'lucide-react';
 
-import appIcon from '../assets/icons/app_icon.png';
+import appIcon from '../assets/app_icon.png';
 
 const API_URL = 'http://127.0.0.1:8000';
 

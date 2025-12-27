@@ -59,7 +59,7 @@ export default function TemplateModal({ isOpen, onClose, onSave, initialData }) 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70">
       <div className="bg-[#1e222b] rounded-2xl w-full max-w-3xl shadow-2xl border border-white/10 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}

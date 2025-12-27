@@ -628,7 +628,7 @@ export default function Appointments() {
 
       {/* Add/Edit Modal - Compact Design */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="bg-finrise-panel w-full max-w-lg rounded-2xl border border-finrise-border shadow-2xl p-5">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-finrise-text">{editingId ? 'Randevuyu Düzenle' : 'Yeni Randevu'}</h3>
@@ -735,7 +735,7 @@ export default function Appointments() {
 
       {/* Note View Modal */}
       {viewingNote && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setViewingNote(null)}>
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setViewingNote(null)}>
             <div className="bg-finrise-panel w-full max-w-sm rounded-2xl border border-finrise-border shadow-2xl p-6" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500">
@@ -763,7 +763,7 @@ export default function Appointments() {
 
       {/* In-App Notification Alert */}
       {activeAlert && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
           <div className="bg-finrise-panel w-full max-w-sm rounded-2xl border border-finrise-accent/50 shadow-2xl shadow-finrise-accent/20 p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-finrise-accent/20 flex items-center justify-center animate-pulse">

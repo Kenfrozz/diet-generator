@@ -148,7 +148,7 @@ export default function Login() {
         className="w-full max-w-md relative z-10 p-8"
         style={{ WebkitAppRegion: 'no-drag' }}
       >
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
+        <div className="bg-finrise-panel border border-finrise-border rounded-3xl p-8 shadow-2xl">
           <div className="text-center mb-8">
             {appSettings.app_logo_path && (
                <div className="flex justify-center mb-4">

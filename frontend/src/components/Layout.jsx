@@ -27,7 +27,7 @@ export default function Layout() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="absolute inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            className="absolute inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
             onClick={() => setActiveAlert(null)}
           >
              <div 
