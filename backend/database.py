@@ -193,6 +193,7 @@ class Database:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS appointments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                firebase_id TEXT UNIQUE,
                 client_name TEXT NOT NULL,
                 phone TEXT,
                 date TEXT NOT NULL,
@@ -200,7 +201,9 @@ class Database:
                 types TEXT,
                 note TEXT,
                 status TEXT DEFAULT 'pending',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                synced_at DATETIME,
+                needs_sync INTEGER DEFAULT 1
             )
         """)
         
@@ -243,6 +246,29 @@ class Database:
         except sqlite3.OperationalError:
             print("Migrating database: Adding security_answer_hash column...")
             cursor.execute("ALTER TABLE users ADD COLUMN security_answer_hash TEXT")
+            conn.commit()
+        
+        # Migrasyon: appointments tablosuna firebase sync sütunları ekle
+        # Her kolonu ayrı ayrı kontrol et (biri varsa diğerleri de var olabilir)
+        try:
+            cursor.execute("SELECT firebase_id FROM appointments LIMIT 1")
+        except sqlite3.OperationalError:
+            print("Migrating database: Adding firebase_id column to appointments...")
+            cursor.execute("ALTER TABLE appointments ADD COLUMN firebase_id TEXT")
+            conn.commit()
+        
+        try:
+            cursor.execute("SELECT synced_at FROM appointments LIMIT 1")
+        except sqlite3.OperationalError:
+            print("Migrating database: Adding synced_at column to appointments...")
+            cursor.execute("ALTER TABLE appointments ADD COLUMN synced_at DATETIME")
+            conn.commit()
+        
+        try:
+            cursor.execute("SELECT needs_sync FROM appointments LIMIT 1")
+        except sqlite3.OperationalError:
+            print("Migrating database: Adding needs_sync column to appointments...")
+            cursor.execute("ALTER TABLE appointments ADD COLUMN needs_sync INTEGER DEFAULT 1")
             conn.commit()
         
         # Varsayılan havuzları ekle

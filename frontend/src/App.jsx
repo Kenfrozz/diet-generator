@@ -2,6 +2,7 @@ import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate
 import { useEffect, useState } from 'react';
 import { NotesProvider } from './context/NotesContext';
 import { AppProvider } from './contexts/AppContext';
+import { FirebaseAuthProvider } from './contexts/FirebaseAuthContext';
 import Login from './pages/Login';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -75,13 +76,15 @@ function MainContent() {
 
 function App() {
   return (
-    <AppProvider>
-      <NotesProvider>
-        <Router>
-          <MainContent />
-        </Router>
-      </NotesProvider>
-    </AppProvider>
+    <FirebaseAuthProvider>
+      <AppProvider>
+        <NotesProvider>
+          <Router>
+            <MainContent />
+          </Router>
+        </NotesProvider>
+      </AppProvider>
+    </FirebaseAuthProvider>
   );
 }
 

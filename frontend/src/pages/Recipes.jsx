@@ -1,8 +1,88 @@
-import { useState, useEffect } from 'react';
-import { Search, Plus, Filter, Edit, Trash2, Package } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Plus, Filter, Edit, Trash2, Package, Cloud, RefreshCw, Check, X } from 'lucide-react';
 import { RecipeModal } from '../components/RecipeModal';
+import { cn } from '../lib/utils';
 
 const API_URL = 'http://127.0.0.1:8000';
+
+// Helper: Get dietitianId
+const getDietitianId = () => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  return user.id ? `user-${user.id}` : 'default-dietitian';
+};
+
+// Firebase sync helper
+const syncRecipeToFirebase = async (action, recipeData) => {
+  try {
+    const { addDoc, updateDoc, deleteDoc, doc, collection, query, where, getDocs } = await import('firebase/firestore');
+    const { db } = await import('../lib/firebase');
+    const { serverTimestamp } = await import('firebase/firestore');
+    
+    const dietitianId = getDietitianId();
+    
+    if (action === 'add') {
+      await addDoc(collection(db, 'recipes'), {
+        name: recipeData.name,
+        meal_type: recipeData.meal_type,
+        pool_type: recipeData.pool_type || 'standard',
+        bki_21_25: recipeData.bki_21_25 || '',
+        bki_26_29: recipeData.bki_26_29 || '',
+        bki_30_33: recipeData.bki_30_33 || '',
+        bki_34_plus: recipeData.bki_34_plus || '',
+        seasons: recipeData.seasons || 'yaz,kis',
+        packageIds: recipeData.packageIds || [],  // Paket ID'leri
+        localId: recipeData.localId,
+        dietitianId: dietitianId,
+        isGlobal: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      console.log('✓ Firebase: Tarif eklendi');
+    } else if (action === 'update') {
+      // Find by name + dietitianId
+      const q = query(
+        collection(db, 'recipes'),
+        where('dietitianId', '==', dietitianId),
+        where('name', '==', recipeData.originalName || recipeData.name)
+      );
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        const docSnap = snapshot.docs[0];
+        await updateDoc(doc(db, 'recipes', docSnap.id), {
+          name: recipeData.name,
+          meal_type: recipeData.meal_type,
+          pool_type: recipeData.pool_type || 'standard',
+          bki_21_25: recipeData.bki_21_25 || '',
+          bki_26_29: recipeData.bki_26_29 || '',
+          bki_30_33: recipeData.bki_30_33 || '',
+          bki_34_plus: recipeData.bki_34_plus || '',
+          seasons: recipeData.seasons || 'yaz,kis',
+          packageIds: recipeData.packageIds || [],  // Paket ID'leri
+          updatedAt: serverTimestamp()
+        });
+        console.log('✓ Firebase: Tarif güncellendi');
+      } else {
+        // Doesn't exist, add it
+        await syncRecipeToFirebase('add', recipeData);
+      }
+    } else if (action === 'delete') {
+      const q = query(
+        collection(db, 'recipes'),
+        where('dietitianId', '==', dietitianId),
+        where('name', '==', recipeData.name)
+      );
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        await deleteDoc(doc(db, 'recipes', snapshot.docs[0].id));
+        console.log('✓ Firebase: Tarif silindi');
+      }
+    }
+  } catch (error) {
+    console.error('Firebase sync error:', error);
+  }
+};
 
 export default function Recipes() {
   const [recipes, setRecipes] = useState([]);
@@ -17,6 +97,10 @@ export default function Recipes() {
 
   // Recipe-package mapping
   const [recipePackagesMap, setRecipePackagesMap] = useState({});
+
+  // Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null);
 
   useEffect(() => {
     fetchRecipes();
@@ -63,7 +147,98 @@ export default function Recipes() {
     }
   };
 
-  const handleSave = async (formData) => {
+  // Firebase sync function
+  const syncWithFirebase = useCallback(async () => {
+    setIsSyncing(true);
+    setSyncStatus(null);
+    
+    const results = { pushed: 0, pulled: 0, errors: [] };
+    
+    try {
+      const { collection, query, where, getDocs, addDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      const { serverTimestamp } = await import('firebase/firestore');
+      
+      const dietitianId = getDietitianId();
+      
+      // Get Firebase recipes (only user's own, not global)
+      const q = query(
+        collection(db, 'recipes'),
+        where('dietitianId', '==', dietitianId)
+      );
+      const snapshot = await getDocs(q);
+      
+      const firebaseRecipes = new Map();
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        firebaseRecipes.set(data.name, { firebaseId: doc.id, ...data });
+      });
+      
+      // Push local recipes that don't exist in Firebase
+      for (const recipe of recipes) {
+        if (!firebaseRecipes.has(recipe.name)) {
+          await addDoc(collection(db, 'recipes'), {
+            name: recipe.name,
+            meal_type: recipe.meal_type,
+            pool_type: recipe.pool_type || 'standard',
+            bki_21_25: recipe.bki_21_25 || recipe.content || '',
+            bki_26_29: recipe.bki_26_29 || '',
+            bki_30_33: recipe.bki_30_33 || '',
+            bki_34_plus: recipe.bki_34_plus || '',
+            seasons: recipe.seasons || 'yaz,kis',
+            localId: recipe.id,
+            dietitianId: dietitianId,
+            isGlobal: false,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+          results.pushed++;
+        }
+      }
+      
+      // Pull Firebase recipes that don't exist locally
+      const localNames = new Set(recipes.map(r => r.name));
+      
+      for (const [name, fbRecipe] of firebaseRecipes) {
+        if (!localNames.has(name)) {
+          // Add to local DB via API
+          try {
+            await fetch(`${API_URL}/api/recipes`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: fbRecipe.name,
+                meal_type: fbRecipe.meal_type,
+                pool_type: fbRecipe.pool_type || 'standard',
+                bki_21_25: fbRecipe.bki_21_25 || '',
+                bki_26_29: fbRecipe.bki_26_29 || '',
+                bki_30_33: fbRecipe.bki_30_33 || '',
+                bki_34_plus: fbRecipe.bki_34_plus || '',
+                seasons: fbRecipe.seasons || 'yaz,kis'
+              })
+            });
+            results.pulled++;
+          } catch (e) {
+            results.errors.push(e.message);
+          }
+        }
+      }
+      
+      if (results.pulled > 0) {
+        await fetchRecipes();
+      }
+      
+      setSyncStatus(results);
+    } catch (error) {
+      results.errors.push(error.message);
+      setSyncStatus(results);
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncStatus(null), 5000);
+    }
+  }, [recipes]);
+
+  const handleSave = async (formData, packageIds = []) => {
     try {
       const method = currentRecipe ? 'PUT' : 'POST';
       const url = currentRecipe 
@@ -77,6 +252,30 @@ export default function Recipes() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        const recipeId = result.id || currentRecipe?.id;
+        
+        // Save package assignments
+        if (recipeId && packageIds.length >= 0) {
+          try {
+            await fetch(`${API_URL}/api/recipes/${recipeId}/packages`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ package_ids: packageIds })
+            });
+          } catch (err) {
+            console.error('Error saving package assignments:', err);
+          }
+        }
+        
+        // Sync to Firebase
+        syncRecipeToFirebase(currentRecipe ? 'update' : 'add', {
+          ...formData,
+          packageIds: packageIds,  // Paket ID'lerini Firebase'e gönder
+          localId: recipeId,
+          originalName: currentRecipe?.name
+        });
+        
         setIsModalOpen(false);
         fetchRecipes(); // Refresh list
       } else {
@@ -90,12 +289,19 @@ export default function Recipes() {
   const handleDelete = async (id) => {
     if (!window.confirm('Bu tarifi silmek istediğinize emin misiniz?')) return;
 
+    // Get recipe data for Firebase
+    const recipeToDelete = recipes.find(r => r.id === id);
+
     try {
       const response = await fetch(`${API_URL}/api/recipes/${id}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
+        // Sync deletion to Firebase
+        if (recipeToDelete) {
+          syncRecipeToFirebase('delete', recipeToDelete);
+        }
         fetchRecipes(); // Refresh list
       } else {
         console.error('Failed to delete recipe');
@@ -152,14 +358,54 @@ export default function Recipes() {
           <h1 className="text-3xl font-bold text-finrise-text mb-2">Tarif Havuzu</h1>
           <p className="text-finrise-muted">Tüm tarifleri yönetin ve düzenleyin</p>
         </div>
-        <button 
-          onClick={openAddModal}
-          className="flex items-center gap-2 bg-finrise-accent hover:bg-finrise-accent/90 text-white px-6 py-3 rounded-xl font-medium transition-colors shadow-lg shadow-finrise-accent/20"
-        >
-          <Plus className="w-5 h-5" />
-          Yeni Tarif
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Sync Button */}
+          <button
+            onClick={syncWithFirebase}
+            disabled={isSyncing}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+              "bg-finrise-input text-finrise-muted border border-finrise-border hover:border-finrise-accent hover:text-finrise-accent",
+              isSyncing && "opacity-50 cursor-not-allowed"
+            )}
+            title="Firebase ile senkronize et"
+          >
+            <RefreshCw size={16} className={cn(isSyncing && "animate-spin")} />
+            Senkronize
+            <Cloud size={16} />
+          </button>
+          
+          <button 
+            onClick={openAddModal}
+            className="flex items-center gap-2 bg-finrise-accent hover:bg-finrise-accent/90 text-white px-6 py-3 rounded-xl font-medium transition-colors shadow-lg shadow-finrise-accent/20"
+          >
+            <Plus className="w-5 h-5" />
+            Yeni Tarif
+          </button>
+        </div>
       </div>
+
+      {/* Sync Status */}
+      {syncStatus && (
+        <div className={cn(
+          "flex items-center gap-2 px-4 py-2 rounded-xl text-sm",
+          syncStatus.errors?.length > 0
+            ? "bg-red-500/10 text-red-400 border border-red-500/20"
+            : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+        )}>
+          {syncStatus.errors?.length > 0 ? (
+            <>
+              <X size={16} />
+              <span>Hata: {syncStatus.errors[0]}</span>
+            </>
+          ) : (
+            <>
+              <Check size={16} />
+              <span>Senkronize edildi: {syncStatus.pushed || 0} gönderildi, {syncStatus.pulled || 0} alındı</span>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col md:flex-row gap-4 bg-finrise-panel p-4 rounded-xl border border-finrise-border shadow-sm">
         <div className="flex-1 relative">

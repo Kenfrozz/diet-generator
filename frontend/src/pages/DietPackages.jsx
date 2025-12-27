@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Plus,
   Search,
@@ -11,10 +11,86 @@ import {
   Calendar,
   XCircle,
   Scale,
+  Cloud,
+  RefreshCw,
+  Check,
+  X,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 
 const API_URL = "http://127.0.0.1:8000";
+
+// Helper: Get dietitianId
+const getDietitianId = () => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  return user.id ? `user-${user.id}` : 'default-dietitian';
+};
+
+// Firebase sync helper
+const syncPackageToFirebase = async (action, packageData) => {
+  try {
+    const { addDoc, updateDoc, deleteDoc, doc, collection, query, where, getDocs } = await import('firebase/firestore');
+    const { db } = await import('../lib/firebase');
+    const { serverTimestamp } = await import('firebase/firestore');
+    
+    const dietitianId = getDietitianId();
+    
+    if (action === 'add') {
+      await addDoc(collection(db, 'packages'), {
+        name: packageData.name,
+        description: packageData.description || '',
+        save_path: packageData.save_path || '',
+        list_count: packageData.list_count || 1,
+        days_per_list: packageData.days_per_list || 7,
+        weight_change_per_list: packageData.weight_change_per_list || 0,
+        localId: packageData.localId,
+        dietitianId: dietitianId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      console.log('✓ Firebase: Paket eklendi');
+    } else if (action === 'update') {
+      // Find by name + dietitianId
+      const q = query(
+        collection(db, 'packages'),
+        where('dietitianId', '==', dietitianId),
+        where('name', '==', packageData.originalName || packageData.name)
+      );
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        const docSnap = snapshot.docs[0];
+        await updateDoc(doc(db, 'packages', docSnap.id), {
+          name: packageData.name,
+          description: packageData.description || '',
+          save_path: packageData.save_path || '',
+          list_count: packageData.list_count || 1,
+          days_per_list: packageData.days_per_list || 7,
+          weight_change_per_list: packageData.weight_change_per_list || 0,
+          updatedAt: serverTimestamp()
+        });
+        console.log('✓ Firebase: Paket güncellendi');
+      } else {
+        // Doesn't exist, add it
+        await syncPackageToFirebase('add', packageData);
+      }
+    } else if (action === 'delete') {
+      const q = query(
+        collection(db, 'packages'),
+        where('dietitianId', '==', dietitianId),
+        where('name', '==', packageData.name)
+      );
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        await deleteDoc(doc(db, 'packages', snapshot.docs[0].id));
+        console.log('✓ Firebase: Paket silindi');
+      }
+    }
+  } catch (error) {
+    console.error('Firebase sync error:', error);
+  }
+};
 
 export default function DietPackages() {
   const [packages, setPackages] = useState([]);
@@ -22,6 +98,11 @@ export default function DietPackages() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const [editingName, setEditingName] = useState(null); // Track original name for updates
+  
+  // Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -51,9 +132,96 @@ export default function DietPackages() {
     }
   };
 
+  // Firebase sync function
+  const syncWithFirebase = useCallback(async () => {
+    setIsSyncing(true);
+    setSyncStatus(null);
+    
+    const results = { pushed: 0, pulled: 0, errors: [] };
+    
+    try {
+      const { collection, query, where, getDocs, addDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      const { serverTimestamp } = await import('firebase/firestore');
+      
+      const dietitianId = getDietitianId();
+      
+      // Get Firebase packages
+      const q = query(
+        collection(db, 'packages'),
+        where('dietitianId', '==', dietitianId)
+      );
+      const snapshot = await getDocs(q);
+      
+      const firebasePackages = new Map();
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        firebasePackages.set(data.name, { firebaseId: doc.id, ...data });
+      });
+      
+      // Push local packages that don't exist in Firebase
+      for (const pkg of packages) {
+        if (!firebasePackages.has(pkg.name)) {
+          await addDoc(collection(db, 'packages'), {
+            name: pkg.name,
+            description: pkg.description || '',
+            save_path: pkg.save_path || '',
+            list_count: pkg.list_count || 1,
+            days_per_list: pkg.days_per_list || 7,
+            weight_change_per_list: pkg.weight_change_per_list || 0,
+            localId: pkg.id,
+            dietitianId: dietitianId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+          results.pushed++;
+        }
+      }
+      
+      // Pull Firebase packages that don't exist locally
+      const localNames = new Set(packages.map(p => p.name));
+      
+      for (const [name, fbPkg] of firebasePackages) {
+        if (!localNames.has(name)) {
+          // Add to local DB via API
+          try {
+            await fetch(`${API_URL}/api/packages`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: fbPkg.name,
+                description: fbPkg.description || '',
+                save_path: fbPkg.save_path || '',
+                list_count: fbPkg.list_count || 1,
+                days_per_list: fbPkg.days_per_list || 7,
+                weight_change_per_list: fbPkg.weight_change_per_list || 0
+              })
+            });
+            results.pulled++;
+          } catch (e) {
+            results.errors.push(e.message);
+          }
+        }
+      }
+      
+      if (results.pulled > 0) {
+        await fetchPackages();
+      }
+      
+      setSyncStatus(results);
+    } catch (error) {
+      results.errors.push(error.message);
+      setSyncStatus(results);
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncStatus(null), 5000);
+    }
+  }, [packages]);
+
   const handleOpenModal = (pkg = null) => {
     if (pkg) {
       setEditingId(pkg.id);
+      setEditingName(pkg.name); // Store original name
       setFormData({
         name: pkg.name || "",
         description: pkg.description || "",
@@ -64,6 +232,7 @@ export default function DietPackages() {
       });
     } else {
       setEditingId(null);
+      setEditingName(null);
       setFormData({
         name: "",
         description: "",
@@ -101,6 +270,15 @@ export default function DietPackages() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        
+        // Sync to Firebase
+        syncPackageToFirebase(editingId ? 'update' : 'add', {
+          ...payload,
+          localId: result.id || editingId,
+          originalName: editingName
+        });
+        
         setIsModalOpen(false);
         fetchPackages();
       } else {
@@ -116,12 +294,19 @@ export default function DietPackages() {
   const handleDelete = async (id) => {
     if (!window.confirm("Bu paketi silmek istediğinize emin misiniz?")) return;
 
+    // Get package data for Firebase
+    const pkgToDelete = packages.find(p => p.id === id);
+
     try {
       const response = await fetch(`${API_URL}/api/packages/${id}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
+        // Sync deletion to Firebase
+        if (pkgToDelete) {
+          syncPackageToFirebase('delete', pkgToDelete);
+        }
         fetchPackages();
       } else {
         const error = await response.json();
@@ -158,14 +343,54 @@ export default function DietPackages() {
               Hazır diyet şablon paketlerini yönetin
             </p>
           </div>
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 bg-finrise-accent text-white px-4 py-2 rounded-lg hover:bg-finrise-accent/90 transition-colors shadow-lg shadow-finrise-accent/20"
-          >
-            <Plus size={18} />
-            <span className="font-medium">Yeni Paket</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Sync Button */}
+            <button
+              onClick={syncWithFirebase}
+              disabled={isSyncing}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                "bg-finrise-input text-finrise-muted border border-finrise-border hover:border-finrise-accent hover:text-finrise-accent",
+                isSyncing && "opacity-50 cursor-not-allowed"
+              )}
+              title="Firebase ile senkronize et"
+            >
+              <RefreshCw size={16} className={cn(isSyncing && "animate-spin")} />
+              {isSyncing ? "Senkronize..." : "Senkronize"}
+              <Cloud size={16} />
+            </button>
+            
+            <button
+              onClick={() => handleOpenModal()}
+              className="flex items-center gap-2 bg-finrise-accent text-white px-4 py-2 rounded-lg hover:bg-finrise-accent/90 transition-colors shadow-lg shadow-finrise-accent/20"
+            >
+              <Plus size={18} />
+              <span className="font-medium">Yeni Paket</span>
+            </button>
+          </div>
         </div>
+
+        {/* Sync Status */}
+        {syncStatus && (
+          <div className={cn(
+            "flex items-center gap-2 px-3 py-2 rounded-lg text-xs",
+            syncStatus.errors?.length > 0
+              ? "bg-red-500/10 text-red-400 border border-red-500/20"
+              : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+          )}>
+            {syncStatus.errors?.length > 0 ? (
+              <>
+                <X size={14} />
+                <span>Hata: {syncStatus.errors[0]}</span>
+              </>
+            ) : (
+              <>
+                <Check size={14} />
+                <span>Senkronize edildi: {syncStatus.pushed || 0} gönderildi, {syncStatus.pulled || 0} alındı</span>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Search Bar */}
         <div className="flex items-center gap-3 p-3 bg-finrise-panel border border-finrise-border rounded-xl">

@@ -12,7 +12,9 @@ import {
   CalendarClock,
   Bell,
   X,
-  StickyNote
+  StickyNote,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -37,6 +39,8 @@ export default function Appointments() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [viewingNote, setViewingNote] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null); // { pushed: 0, pulled: 0 }
   
   // Filters
   const [search, setSearch] = useState('');
@@ -127,6 +131,53 @@ export default function Appointments() {
     }
   }, []);
 
+  // Firebase Sync function - uses frontend sync service
+  const syncWithFirebase = useCallback(async () => {
+    setIsSyncing(true);
+    setSyncStatus(null);
+    
+    try {
+      // Dynamic import to avoid loading Firebase if not used
+      const { syncAppointments, checkFirebaseConnection } = await import('../lib/syncService');
+      
+      // First check connection
+      const connectionCheck = await checkFirebaseConnection();
+      if (!connectionCheck.connected) {
+        console.error('Firebase connection check failed:', connectionCheck.error);
+        setSyncStatus({ error: connectionCheck.error || 'Firebase bağlantısı kurulamadı' });
+        setIsSyncing(false);
+        return;
+      }
+      
+      // Get dietitianId from localStorage user
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const dietitianId = user.id ? `user-${user.id}` : 'default-dietitian';
+      
+      // Perform sync
+      const result = await syncAppointments(dietitianId);
+      
+      if (result.errors.length > 0) {
+        setSyncStatus({ 
+          error: result.errors[0],
+          pushed: result.pushed,
+          pulled: result.pulled
+        });
+      } else {
+        setSyncStatus(result);
+      }
+      
+      // Refresh local data
+      await fetchAppointments();
+    } catch (error) {
+      console.error('Sync error details:', error);
+      setSyncStatus({ error: error.message || 'Bağlantı hatası' });
+    } finally {
+      setIsSyncing(false);
+      // Clear status after 5 seconds
+      setTimeout(() => setSyncStatus(null), 5000);
+    }
+  }, [fetchAppointments]);
+
   const handleOpenModal = useCallback((app = null) => {
       if (app) {
           setEditingId(app.id);
@@ -152,25 +203,42 @@ export default function Appointments() {
       setIsModalOpen(true);
   }, []);
 
+  // Helper: Get dietitianId
+  const getDietitianId = () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user.id ? `user-${user.id}` : 'default-dietitian';
+  };
+
   const handleSaveAppointment = async (e) => {
       e.preventDefault();
       
       try {
+        // 1. Save to local database first
+        let localResult;
         if (editingId) {
-          // Update existing
+          // Update existing locally
           await fetch(`${API_URL}/api/appointments/${editingId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
           });
+          localResult = { id: editingId };
         } else {
-          // Create new
-          await fetch(`${API_URL}/api/appointments`, {
+          // Create new locally
+          const response = await fetch(`${API_URL}/api/appointments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
           });
+          localResult = await response.json();
         }
+        
+        // 2. Sync to Firebase in background (non-blocking)
+        syncToFirebase(editingId ? 'update' : 'add', {
+          ...formData,
+          localId: localResult.id || editingId
+        });
+        
         fetchAppointments();
         setIsModalOpen(false);
       } catch (error) {
@@ -178,16 +246,100 @@ export default function Appointments() {
       }
   };
 
+  // Background sync to Firebase
+  const syncToFirebase = async (action, appointmentData) => {
+    try {
+      const { addDoc, updateDoc, deleteDoc, doc, collection, query, where, getDocs } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      const { serverTimestamp } = await import('firebase/firestore');
+      
+      const dietitianId = getDietitianId();
+      
+      if (action === 'add') {
+        await addDoc(collection(db, 'appointments'), {
+          clientName: appointmentData.clientName,
+          phone: appointmentData.phone || '',
+          date: appointmentData.date,
+          time: appointmentData.time,
+          types: appointmentData.types || [],
+          note: appointmentData.note || '',
+          status: appointmentData.status || 'pending',
+          dietitianId: dietitianId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        console.log('✓ Firebase: Randevu eklendi');
+      } else if (action === 'update') {
+        // Find by matching key
+        const q = query(
+          collection(db, 'appointments'),
+          where('dietitianId', '==', dietitianId)
+        );
+        const snapshot = await getDocs(q);
+        
+        for (const docSnap of snapshot.docs) {
+          const data = docSnap.data();
+          // Find matching appointment to update
+          if (data.clientName === appointmentData.clientName && 
+              data.date === appointmentData.date) {
+            await updateDoc(doc(db, 'appointments', docSnap.id), {
+              clientName: appointmentData.clientName,
+              phone: appointmentData.phone || '',
+              date: appointmentData.date,
+              time: appointmentData.time,
+              types: appointmentData.types || [],
+              note: appointmentData.note || '',
+              updatedAt: serverTimestamp()
+            });
+            console.log('✓ Firebase: Randevu güncellendi');
+            break;
+          }
+        }
+      } else if (action === 'delete') {
+        // Find and delete by matching
+        const q = query(
+          collection(db, 'appointments'),
+          where('dietitianId', '==', dietitianId)
+        );
+        const snapshot = await getDocs(q);
+        
+        for (const docSnap of snapshot.docs) {
+          const data = docSnap.data();
+          if (data.clientName === appointmentData.clientName && 
+              data.date === appointmentData.date &&
+              data.time === appointmentData.time) {
+            await deleteDoc(doc(db, 'appointments', docSnap.id));
+            console.log('✓ Firebase: Randevu silindi');
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Firebase sync error:', error);
+      // Silent fail - local operation succeeded
+    }
+  };
+
   const handleDelete = useCallback(async (id) => {
       if (window.confirm('Bu randevuyu silmek istediğinize emin misiniz?')) {
           try {
+            // Get appointment data before deleting (for Firebase sync)
+            const appToDelete = appointments.find(a => a.id === id);
+            
+            // Delete from local
             await fetch(`${API_URL}/api/appointments/${id}`, { method: 'DELETE' });
+            
+            // Delete from Firebase in background
+            if (appToDelete) {
+              syncToFirebase('delete', appToDelete);
+            }
+            
             fetchAppointments();
           } catch (error) {
             console.error('Error deleting appointment:', error);
           }
       }
-  }, [fetchAppointments]);
+  }, [fetchAppointments, appointments]);
 
   const openWhatsapp = useCallback((phone) => {
       if (!phone) return;
@@ -229,9 +381,47 @@ export default function Appointments() {
       
       {/* Controls Header */}
       <div className="flex flex-col gap-4 p-6 pb-4">
-        <div>
+        <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-finrise-text mb-1">Randevu Listesi</h1>
+            
+            {/* Sync Button */}
+            <button 
+              onClick={syncWithFirebase}
+              disabled={isSyncing}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                "bg-finrise-input text-finrise-muted border border-finrise-border hover:border-finrise-accent hover:text-finrise-accent",
+                isSyncing && "opacity-50 cursor-not-allowed"
+              )}
+              title="Firebase ile senkronize et"
+            >
+              <RefreshCw size={14} className={cn(isSyncing && "animate-spin")} />
+              {isSyncing ? "Senkronize..." : "Senkronize"}
+              <Cloud size={14} />
+            </button>
         </div>
+
+        {/* Sync Status */}
+        {syncStatus && (
+          <div className={cn(
+            "flex items-center gap-2 px-3 py-2 rounded-lg text-xs",
+            syncStatus.error 
+              ? "bg-red-500/10 text-red-400 border border-red-500/20"
+              : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+          )}>
+            {syncStatus.error ? (
+              <>
+                <X size={14} />
+                <span>Hata: {syncStatus.error}</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle size={14} />
+                <span>Senkronize edildi: {syncStatus.pushed || 0} gönderildi, {syncStatus.pulled || 0} alındı</span>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Filters Bar */}
         <div className="flex gap-2 p-3 bg-finrise-panel border border-finrise-border rounded-xl items-center">
@@ -246,13 +436,24 @@ export default function Appointments() {
                 />
             </div>
 
-            {/* Date Filter */}
-            <input 
-                type="date"
-                value={dateFilter}
-                onChange={e => setDateFilter(e.target.value)}
-                className="bg-finrise-input border border-finrise-border rounded-lg px-2 py-2 text-sm text-finrise-text outline-none focus:border-finrise-accent cursor-pointer w-[130px] shrink-0"
-            />
+            {/* Date Filter with Clear Button */}
+            <div className="flex items-center gap-1">
+              <input 
+                  type="date"
+                  value={dateFilter}
+                  onChange={e => setDateFilter(e.target.value)}
+                  className="bg-finrise-input border border-finrise-border rounded-lg px-2 py-2 text-sm text-finrise-text outline-none focus:border-finrise-accent cursor-pointer w-[130px] shrink-0"
+              />
+              {dateFilter && (
+                <button 
+                  onClick={() => setDateFilter('')}
+                  className="p-2 rounded-lg text-finrise-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                  title="Tarih filtresini kaldır (Tümünü göster)"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
 
             {/* Service Filter - Hidden on small screens */}
              <select 

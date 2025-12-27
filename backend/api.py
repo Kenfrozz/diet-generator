@@ -899,6 +899,16 @@ def get_detoks_bot_status():
         return {"status": "running"}
     return {"status": "stopped"}
 
+# --- Firebase Sync Router ---
+try:
+    from firebase_sync import router as sync_router
+    app.include_router(sync_router)
+    print("Firebase sync router loaded successfully")
+except ImportError as e:
+    print(f"Firebase sync module not available: {e}")
+except Exception as e:
+    print(f"Error loading firebase sync: {e}")
+
 if __name__ == "__main__":
     import uvicorn
     # Run on a specific port, e.g., 8000

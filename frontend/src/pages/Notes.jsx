@@ -1,7 +1,7 @@
 import { useState, useCallback, memo } from 'react';
 import {
   NotebookPen, Plus, Trash2, Search, Save, Calendar, Clock,
-  Edit2, Bell, Palette, Pin, Check, X, AlertCircle
+  Edit2, Bell, Palette, Pin, Check, X, AlertCircle, Cloud, RefreshCw
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion'; // Removed AnimatePresence since it's global now
@@ -18,12 +18,63 @@ export default function Notes() {
       handleNoteSelect: contextNoteSelect, // Alias to avoid conflict with local wrapper
       requestNotificationPermission,
       activeAlert, // From context
-      setActiveAlert // From context
+      setActiveAlert, // From context
+      syncNotesWithFirebase, // Firebase sync function
+      saveNoteToFirebase,    // Manual save to Firebase
+      unsavedChanges         // Track unsaved changes
   } = useNotes();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(null);
+
+  // Handle sync button click (all notes)
+  const handleSync = async () => {
+    setIsSyncing(true);
+    setSyncStatus(null);
+    
+    try {
+      const result = await syncNotesWithFirebase();
+      
+      if (result.errors.length > 0) {
+        setSyncStatus({ error: result.errors[0] });
+      } else {
+        setSyncStatus(result);
+      }
+    } catch (error) {
+      setSyncStatus({ error: error.message });
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncStatus(null), 5000);
+    }
+  };
+
+  // Handle save button click (current note only)
+  const handleSave = async () => {
+    if (!activeNoteId) return;
+    
+    setIsSaving(true);
+    setSaveStatus(null);
+    
+    try {
+      const result = await saveNoteToFirebase(activeNoteId);
+      
+      if (result.success) {
+        setSaveStatus({ success: true });
+      } else {
+        setSaveStatus({ error: result.error });
+      }
+    } catch (error) {
+      setSaveStatus({ error: error.message });
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setSaveStatus(null), 3000);
+    }
+  };
 
   const activeNote = notes.find(n => n.id.toString() === activeNoteId?.toString());
 
@@ -34,7 +85,9 @@ export default function Notes() {
 
   const handleDeleteNote = (id, e) => {
     e?.stopPropagation();
-    contextDeleteNote(id);
+    if (window.confirm('Bu notu silmek istediğinize emin misiniz?')) {
+      contextDeleteNote(id);
+    }
   };
 
   const handleNoteSelect = (id) => {
@@ -74,19 +127,58 @@ export default function Notes() {
       <div className="w-80 flex flex-col bg-finrise-panel border border-finrise-border rounded-2xl shadow-xl overflow-hidden shrink-0">
         
         {/* Header */}
-        <div className="p-4 border-b border-finrise-border space-y-4">
+        <div className="p-4 border-b border-finrise-border space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-finrise-text flex items-center gap-2">
               <NotebookPen className="text-finrise-accent" />
               Notlar
             </h2>
-            <button 
-              onClick={handleCreateNote}
-              className="p-2 bg-finrise-accent text-white rounded-lg hover:bg-finrise-accent/90 transition-all shadow-lg hover:scale-105 active:scale-95"
-            >
-              <Plus size={20} />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Sync Button */}
+              <button 
+                onClick={handleSync}
+                disabled={isSyncing}
+                className={cn(
+                  "p-2 rounded-lg transition-all",
+                  "bg-finrise-input text-finrise-muted border border-finrise-border hover:border-finrise-accent hover:text-finrise-accent",
+                  isSyncing && "opacity-50 cursor-not-allowed"
+                )}
+                title="Firebase ile senkronize et"
+              >
+                <RefreshCw size={16} className={cn(isSyncing && "animate-spin")} />
+              </button>
+              
+              {/* Add Button */}
+              <button 
+                onClick={handleCreateNote}
+                className="p-2 bg-finrise-accent text-white rounded-lg hover:bg-finrise-accent/90 transition-all shadow-lg hover:scale-105 active:scale-95"
+              >
+                <Plus size={20} />
+              </button>
+            </div>
           </div>
+          
+          {/* Sync Status */}
+          {syncStatus && (
+            <div className={cn(
+              "flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs",
+              syncStatus.error 
+                ? "bg-red-500/10 text-red-400"
+                : "bg-emerald-500/10 text-emerald-400"
+            )}>
+              {syncStatus.error ? (
+                <>
+                  <X size={12} />
+                  <span className="truncate">{syncStatus.error}</span>
+                </>
+              ) : (
+                <>
+                  <Check size={12} />
+                  <span>{syncStatus.pushed || 0}↑ {syncStatus.pulled || 0}↓</span>
+                </>
+              )}
+            </div>
+          )}
           
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-finrise-muted w-4 h-4" />
@@ -278,12 +370,51 @@ export default function Notes() {
                />
             </div>
             
-            {/* Footer Status */}
-            <div className="px-6 py-2 bg-finrise-panel border-t border-finrise-border text-[10px] text-finrise-muted flex justify-between items-center z-10">
-                <span>{activeNote.id}</span>
-                <span className="flex items-center gap-1 text-finrise-green">
-                    <Check size={10} /> Kaydedildi
-                </span>
+            {/* Footer Status with Save Button */}
+            <div className="px-4 py-2 bg-finrise-panel border-t border-finrise-border flex justify-between items-center z-10">
+                <span className="text-[10px] text-finrise-muted">{activeNote.id}</span>
+                
+                <div className="flex items-center gap-3">
+                    {/* Save Status */}
+                    {saveStatus && (
+                      <span className={cn(
+                        "text-xs flex items-center gap-1",
+                        saveStatus.success ? "text-emerald-400" : "text-red-400"
+                      )}>
+                        {saveStatus.success ? (
+                          <><Check size={12} /> Kaydedildi</>
+                        ) : (
+                          <><X size={12} /> {saveStatus.error}</>
+                        )}
+                      </span>
+                    )}
+                    
+                    {/* Unsaved Indicator */}
+                    {unsavedChanges && !saveStatus && (
+                      <span className="text-xs text-orange-400 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+                        Kaydedilmedi
+                      </span>
+                    )}
+                    
+                    {/* Save Button */}
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving || !unsavedChanges}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                        unsavedChanges
+                          ? "bg-finrise-accent text-white hover:bg-finrise-accent/90 shadow-lg shadow-finrise-accent/20"
+                          : "bg-finrise-input text-finrise-muted border border-finrise-border cursor-not-allowed opacity-50"
+                      )}
+                    >
+                      {isSaving ? (
+                        <><RefreshCw size={12} className="animate-spin" /> Kaydediliyor...</>
+                      ) : (
+                        <><Cloud size={12} /> Kaydet</>
+                      )}
+                    </button>
+                </div>
             </div>
           </>
         ) : (

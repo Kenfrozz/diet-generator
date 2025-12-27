@@ -132,20 +132,8 @@ export function RecipeModal({ isOpen, onClose, onSave, recipe }) {
       seasons: formData.seasons
     };
     
-    await onSave(recipePayload);
-    
-    // Eğer düzenleme modundaysak, paket ilişkilerini güncelleyelim
-    if (recipe?.id) {
-      try {
-        await fetch(`${API_URL}/api/recipes/${recipe.id}/packages`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ package_ids: formData.package_ids })
-        });
-      } catch (error) {
-        console.error('Error updating recipe packages:', error);
-      }
-    }
+    // Pass package_ids to onSave - it will handle the API call
+    await onSave(recipePayload, formData.package_ids);
   };
 
   const getBorderColor = (color) => {
